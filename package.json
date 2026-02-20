@@ -1,0 +1,24 @@
+{
+  "name": "tower-defense",
+  "private": true,
+  "packageManager": "pnpm@10.29.3",
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:all": "concurrently \"pnpm --filter @td/server dev\" \"pnpm --filter @td/client dev\"",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0",
+    "eslint": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "prettier": "^3.4.0",
+    "vitest": "^3.0.0",
+    "concurrently": "^9.0.0"
+  }
+}
