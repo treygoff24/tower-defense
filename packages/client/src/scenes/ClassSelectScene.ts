@@ -133,11 +133,11 @@ export class ClassSelectScene extends Phaser.Scene {
       color: '#6677aa',
     }).setOrigin(0.5).setDepth(2);
 
-    // Ribbon decoration below title
+    // Subtle divider below title (small ribbon accent)
     if (this.textures.exists('ui_ribbon_small')) {
-      const ribbon = this.add.image(W / 2, 105, 'ui_ribbon_small');
-      ribbon.setDisplaySize(500, 28);
-      ribbon.setAlpha(0.7).setDepth(2);
+      const ribbon = this.add.image(W / 2, 100, 'ui_ribbon_small');
+      ribbon.setDisplaySize(300, 16);
+      ribbon.setAlpha(0.35).setDepth(2);
     }
 
     // ── Class cards ───────────────────────────────────────────────
