@@ -71,10 +71,20 @@ export class GameSimulation {
   }
 
   readyUp(id: string): CommandResult {
-    return this.room.readyUp(id);
+    const result = this.room.readyUp(id);
+    if (result.ok && this.allPlayersReady()) {
+      this.startGame();
+    }
+    return result;
+  }
+
+  private allPlayersReady(): boolean {
+    const players = Object.values(this.room.state.players);
+    return players.length > 0 && players.every(p => p.ready && p.elementClass !== null);
   }
 
   startGame(): void {
+    if (this.room.state.phase === 'prep' || this.room.state.phase === 'combat') return;
     this.economy.grantStartingGold(this.room.playerCount);
     this.room.state.phase = 'prep';
     this.room.state.prepTimeRemaining = PREP_PHASE_DURATION_SEC;
