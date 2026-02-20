@@ -22,7 +22,7 @@ const CLASS_CARDS: ClassCardData[] = [
     description: 'Explosive grenades and fire DoT. Burns cut through enemy armor.',
     color: 0xff4400,
     buildingKey: 'building_yellow',
-    soldierKey: 'tower_fire',
+    soldierKey: 'ts_fire_idle',
     towers: ['Flame Spire', 'Inferno Cannon', 'Magma Pool'],
     passive: 'Burn on hit',
   },
@@ -33,7 +33,7 @@ const CLASS_CARDS: ClassCardData[] = [
     description: 'Splash damage + slow. Soaked enemies trigger powerful reactions.',
     color: 0x0088ff,
     buildingKey: 'building_blue',
-    soldierKey: 'tower_water',
+    soldierKey: 'ts_water_idle',
     towers: ['Tidal Tower', 'Geyser', 'Whirlpool'],
     passive: 'Soaked on hit',
   },
@@ -44,7 +44,7 @@ const CLASS_CARDS: ClassCardData[] = [
     description: 'Freeze and shatter. Stacking cold makes enemies brittle.',
     color: 0x88ccff,
     buildingKey: 'building_black',
-    soldierKey: 'tower_ice',
+    soldierKey: 'ts_ice_idle',
     towers: ['Frost Turret', 'Blizzard Tower', 'Glacial Spike'],
     passive: 'Cold on hit',
   },
@@ -55,7 +55,7 @@ const CLASS_CARDS: ClassCardData[] = [
     description: 'Venom spreads between enemies. Blight stacks deal massive damage over time.',
     color: 0x44cc44,
     buildingKey: 'building_purple',
-    soldierKey: 'tower_poison',
+    soldierKey: 'ts_poison_idle',
     towers: ['Venom Spitter', 'Plague Spreader', 'Miasma Cloud'],
     passive: 'Toxin on hit',
   },
@@ -231,7 +231,9 @@ export class ClassSelectScene extends Phaser.Scene {
     let soldierSprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null = null;
     if (this.textures.exists(classData.soldierKey)) {
       soldierSprite = this.add.sprite(-4, soldierY, classData.soldierKey, 0);
-      soldierSprite.setScale(4);
+      // Tiny Swords units are 192×192 (or 320×320 for Lancer) — scale to fit card view
+      const isLancer = classData.soldierKey.includes('ice');
+      soldierSprite.setScale(isLancer ? 0.45 : 0.7);
       // Play idle animation if registered
       const idleAnim = `${classData.soldierKey}_idle`;
       if (this.anims.exists(idleAnim)) {
@@ -456,8 +458,8 @@ export class ClassSelectScene extends Phaser.Scene {
     if (soldier) {
       this.tweens.add({
         targets: soldier,
-        scaleX: 4.8,
-        scaleY: 4.8,
+        scaleX: (soldier as Phaser.GameObjects.Sprite).scaleX * 1.2,
+        scaleY: (soldier as Phaser.GameObjects.Sprite).scaleY * 1.2,
         duration: 120,
         yoyo: true,
         ease: 'Power2.Out',
@@ -474,108 +476,64 @@ export class ClassSelectScene extends Phaser.Scene {
 
   private createReadyButton(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y).setDepth(10);
-    const btnW = 220;
-    const btnH = 56;
+    const btnW = 240;
+    const btnH = 52;
 
-    const useSprite = this.textures.exists('ui_btn_blue_regular') && this.textures.exists('ui_btn_blue_pressed');
-
-    if (useSprite) {
-      // Tiny Swords sprite button — disabled/greyed out until class is selected
-      const btnImg = this.add.image(0, 0, 'ui_btn_blue_regular');
-      btnImg.setDisplaySize(btnW, btnH);
-      btnImg.setAlpha(0.45);
-      btnImg.setTint(0x556677);
-      (container as unknown as { btnImg: Phaser.GameObjects.Image }).btnImg = btnImg;
-
-      this.readyText = this.add.text(0, -2, 'SELECT A CLASS', {
-        fontSize: '17px',
-        fontFamily: '"Arial Black", Arial',
-        fontStyle: 'bold',
-        color: '#8899aa',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
-
-      const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
-        .setInteractive({ useHandCursor: false });
-      (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
-
-      hit.on('pointerover', () => {
-        if (!this.selectedClass) return;
-        btnImg.setTexture('ui_btn_blue_pressed');
-      });
-      hit.on('pointerout', () => {
-        if (!this.selectedClass) return;
-        btnImg.setTexture('ui_btn_blue_regular');
-      });
-      hit.on('pointerdown', () => {
-        if (!this.selectedClass) return;
-        btnImg.setTexture('ui_btn_blue_pressed');
-        this.tweens.add({ targets: container, scaleX: 0.93, scaleY: 0.93, duration: 80, yoyo: true });
-      });
-      hit.on('pointerup', () => {
-        if (this.selectedClass) {
-          btnImg.setTexture('ui_btn_blue_regular');
-          this.emitReadyUp();
-        }
-      });
-
-      container.add([btnImg, this.readyText, hit]);
-    } else {
-      // Fallback: drawn graphics button
-      const bg = this.add.graphics();
-      bg.fillStyle(0x223344, 1);
+    const bg = this.add.graphics();
+    const drawBtn = (state: 'disabled' | 'normal' | 'hover' | 'pressed') => {
+      bg.clear();
+      // Shadow
+      bg.fillStyle(0x000000, 0.3);
+      bg.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 3, btnW, btnH, 10);
+      // Body
+      const fills: Record<string, number> = { disabled: 0x1a2233, normal: 0x004d28, hover: 0x006633, pressed: 0x003d1a };
+      bg.fillStyle(fills[state] ?? 0x1a2233, 1);
       bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      bg.lineStyle(2, 0x334455, 1);
+      // Top highlight
+      if (state !== 'disabled') {
+        bg.fillStyle(0xffffff, state === 'hover' ? 0.12 : 0.06);
+        bg.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 1, btnW - 4, btnH / 2 - 2, { tl: 8, tr: 8, bl: 0, br: 0 });
+      }
+      // Border
+      const borders: Record<string, [number, number]> = {
+        disabled: [0x334455, 0.5], normal: [0x00cc66, 0.8], hover: [0x00ff88, 1], pressed: [0x00aa55, 1],
+      };
+      const [bc, ba] = borders[state] ?? [0x334455, 0.5];
+      bg.lineStyle(2, bc, ba);
       bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      this.readyBg = bg;
+    };
+    drawBtn('disabled');
+    this.readyBg = bg;
 
-      this.readyText = this.add.text(0, 0, 'SELECT A CLASS', {
-        fontSize: '19px',
-        fontFamily: '"Arial Black", Arial',
-        fontStyle: 'bold',
-        color: '#445566',
-        stroke: '#000000',
-        strokeThickness: 2,
-      }).setOrigin(0.5);
+    this.readyText = this.add.text(0, 0, 'SELECT A CLASS', {
+      fontSize: '18px',
+      fontFamily: '"Arial Black", Arial',
+      fontStyle: 'bold',
+      color: '#556677',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
 
-      const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
-        .setInteractive({ useHandCursor: false });
-      (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
-      (container as unknown as { background: Phaser.GameObjects.Graphics }).background = bg;
+    const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
+      .setInteractive({ useHandCursor: false });
+    (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
+    (container as unknown as { drawBtn: typeof drawBtn }).drawBtn = drawBtn;
 
-      hit.on('pointerover', () => {
-        if (!this.selectedClass) return;
-        bg.clear();
-        bg.fillStyle(0x00aa66, 1);
-        bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-        bg.lineStyle(2, 0x00ff88, 1);
-        bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      });
-      hit.on('pointerout', () => {
-        if (!this.selectedClass) return;
-        bg.clear();
-        bg.fillStyle(0x008855, 1);
-        bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-        bg.lineStyle(2, 0x00cc77, 1);
-        bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      });
-      hit.on('pointerdown', () => {
-        if (!this.selectedClass) return;
-        bg.clear();
-        bg.fillStyle(0x006644, 1);
-        bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      });
-      hit.on('pointerup', () => {
-        if (this.selectedClass) {
-          this.tweens.add({ targets: container, scaleX: 0.93, scaleY: 0.93, duration: 80, yoyo: true });
-          this.emitReadyUp();
-        }
-      });
+    hit.on('pointerover', () => { if (this.selectedClass) drawBtn('hover'); });
+    hit.on('pointerout', () => { if (this.selectedClass) drawBtn('normal'); });
+    hit.on('pointerdown', () => {
+      if (!this.selectedClass) return;
+      drawBtn('pressed');
+      this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 60, yoyo: true });
+    });
+    hit.on('pointerup', () => {
+      if (this.selectedClass) {
+        drawBtn('normal');
+        this.emitReadyUp();
+      }
+    });
 
-      container.add([bg, this.readyText, hit]);
-    }
-
+    container.add([bg, this.readyText, hit]);
     return container;
   }
 
@@ -586,20 +544,8 @@ export class ClassSelectScene extends Phaser.Scene {
     this.readyText.setText('⚔  READY  ⚔');
     this.readyText.setColor('#ffffff');
 
-    const btnImg = (this.readyButton as unknown as { btnImg?: Phaser.GameObjects.Image }).btnImg;
-    if (btnImg) {
-      // Sprite mode — remove grey tint, full alpha
-      btnImg.clearTint();
-      btnImg.setAlpha(1);
-    } else {
-      // Graphics mode
-      const btnW = 220; const btnH = 56;
-      this.readyBg.clear();
-      this.readyBg.fillStyle(0x008855, 1);
-      this.readyBg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      this.readyBg.lineStyle(2, 0x00cc77, 1);
-      this.readyBg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-    }
+    const drawBtn = (this.readyButton as unknown as { drawBtn: (s: string) => void }).drawBtn;
+    if (drawBtn) drawBtn('normal');
 
     // Pulse to draw attention
     this.tweens.add({

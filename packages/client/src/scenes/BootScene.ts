@@ -158,21 +158,29 @@ export class BootScene extends Phaser.Scene {
       frameRate: 10, repeat: 0,
     });
 
-    // ── Soldiers (Towers): 80×112, frameWidth=16, frameHeight=16 ─────
-    // Rows: 0=idle(5f), 1=walk(5f), 2=crawl(5f), 3=fire(5f), 4=hit(5f), 5=death(5f), 6=throw(5f)
-    const soldierKeys = ['tower_fire', 'tower_water', 'tower_ice', 'tower_poison', 'tower_shared'];
-    for (const key of soldierKeys) {
-      this.safeCreateAnim(anims, `${key}_idle`, {
-        key, frames: anims.generateFrameNumbers(key, { start: 0, end: 4 }),
-        frameRate: 6, repeat: -1,
+    // ── Tiny Swords Units (Towers) ─────────────────────────────────────
+    // Each element has an idle spritesheet (looping) and an attack spritesheet (one-shot).
+    // Single-row horizontal strips; frame counts vary per element.
+    const tsUnits: Array<{ element: string; idleEnd: number; attackEnd: number }> = [
+      { element: 'fire',   idleEnd: 7,  attackEnd: 3  },
+      { element: 'water',  idleEnd: 5,  attackEnd: 7  },
+      { element: 'ice',    idleEnd: 11, attackEnd: 2  },
+      { element: 'poison', idleEnd: 5,  attackEnd: 10 },
+      { element: 'shared', idleEnd: 7,  attackEnd: 3  },
+    ];
+    for (const { element, idleEnd, attackEnd } of tsUnits) {
+      const idleKey = `ts_${element}_idle`;
+      const attackKey = `ts_${element}_attack`;
+
+      this.safeCreateAnim(anims, `${idleKey}_idle`, {
+        key: idleKey,
+        frames: anims.generateFrameNumbers(idleKey, { start: 0, end: idleEnd }),
+        frameRate: 7, repeat: -1,
       });
-      this.safeCreateAnim(anims, `${key}_fire`, {
-        key, frames: anims.generateFrameNumbers(key, { start: 15, end: 19 }),
-        frameRate: 12, repeat: 0,
-      });
-      this.safeCreateAnim(anims, `${key}_throw`, {
-        key, frames: anims.generateFrameNumbers(key, { start: 30, end: 34 }),
-        frameRate: 12, repeat: 0,
+      this.safeCreateAnim(anims, `${attackKey}_attack`, {
+        key: attackKey,
+        frames: anims.generateFrameNumbers(attackKey, { start: 0, end: attackEnd }),
+        frameRate: 10, repeat: 0,
       });
     }
 

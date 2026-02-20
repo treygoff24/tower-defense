@@ -3,6 +3,7 @@ import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone } fr
 import { TILE_SIZE, MAP_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { ENEMY_ASSETS, TOWER_ASSETS } from '../assets/manifest';
+import type { TowerAssetInfo } from '../assets/manifest';
 import { AudioManager } from '../audio/AudioManager';
 
 // ─── Per-tower runtime state ─────────────────────────────────────────────────
@@ -10,6 +11,7 @@ interface TowerVisual {
   base: Phaser.GameObjects.Image;
   soldier: Phaser.GameObjects.Sprite;
   rangeCircle: Phaser.GameObjects.Graphics;
+  aura: Phaser.GameObjects.Ellipse;
   selected: boolean;
 }
 
@@ -32,9 +34,8 @@ interface LiveProjectile {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const SOLDIER_SCALE = 3;
 const ENEMY_BASE_SCALE = 3;
-const BUILDING_SCALE = 0.28;
+const BUILDING_SCALE = 0.35;
 const MAX_PROJECTILES = 120;
 const CLOUD_DEPTH = -10;
 const SHADOW_DEPTH = 1;
@@ -172,6 +173,88 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
+  // ─── Autotile helpers ───────────────────────────────────────────
+
+  /**
+   * Returns the tileset frame index for a grass (color1) tile based on its
+   * position relative to the map edges.  Uses the standard 3×3 autotile
+   * layout:
+   *   0  1  2      (top row: corners & top edge)
+   *   9 10 11      (mid row: left edge, center, right edge)
+   *  18 19 20      (bot row: corners & bottom edge)
+   */
+  private getGrassTileFrame(tx: number, ty: number): number {
+    const maxX = this.mapWidth - 1;
+    const maxY = this.mapHeight - 1;
+
+    const isLeft   = tx === 0;
+    const isRight  = tx === maxX;
+    const isTop    = ty === 0;
+    const isBottom = ty === maxY;
+
+    // Corners
+    if (isTop && isLeft)     return 0;
+    if (isTop && isRight)    return 2;
+    if (isBottom && isLeft)  return 18;
+    if (isBottom && isRight) return 20;
+
+    // Edges
+    if (isTop)    return 1;
+    if (isBottom) return 19;
+    if (isLeft)   return 9;
+    if (isRight)  return 11;
+
+    // Center fill
+    return 10;
+  }
+
+  /**
+   * Returns the tileset frame index for a path (color2) tile.
+   * Checks which of the 4 cardinal neighbours are also path tiles and picks
+   * the matching frame from the standard 3-row autotile layout.
+   *
+   * Frame map (same 9-col × 6-row sheet, we use the first 3 rows):
+   *   0  1  2
+   *   9 10 11
+   *  18 19 20
+   *
+   * Convention: frame 10 = all neighbours are path (center fill).
+   */
+  private getPathTileFrame(tx: number, ty: number): number {
+    const up    = this.isOnPath(tx, ty - 1);
+    const down  = this.isOnPath(tx, ty + 1);
+    const left  = this.isOnPath(tx - 1, ty);
+    const right = this.isOnPath(tx + 1, ty);
+
+    // All four neighbours
+    if (up && down && left && right) return 10;
+
+    // Three neighbours (T-junctions) → use center, looks best
+    if (up && down && left)  return 11;  // open on right → right edge
+    if (up && down && right) return 9;   // open on left → left edge
+    if (left && right && up) return 19;  // open on bottom → bottom edge
+    if (left && right && down) return 1; // open on top → top edge
+
+    // Two neighbours — straights
+    if (up && down)    return 10; // vertical corridor
+    if (left && right) return 10; // horizontal corridor
+
+    // Two neighbours — corners
+    if (down && right) return 0;  // top-left corner (path continues down & right)
+    if (down && left)  return 2;  // top-right corner
+    if (up && right)   return 18; // bottom-left corner
+    if (up && left)    return 20; // bottom-right corner
+
+    // One neighbour — dead ends → use edge tile facing the open side
+    if (up)    return 19;
+    if (down)  return 1;
+    if (left)  return 11;
+    if (right) return 9;
+
+    // Island (no neighbours) — use center
+    return 10;
+  }
+
   renderMap(waypoints: Vec2[], buildZones: BuildZone[]): void {
     this.waypoints = waypoints;
     this.buildZones = buildZones;
@@ -180,15 +263,19 @@ export class GameScene extends Phaser.Scene {
     // ── Tile layer (tileset sprites beneath graphics) ─────────────
     this.tileLayer.clear(true, true);
     const hasTileset = this.textures.exists('tileset_color1_ss');
+    const hasDirtTileset = this.textures.exists('tileset_color2_ss');
+
+    // Deterministic seed helper for per-tile variation
+    const hash = (a: number, b: number): number => ((a * 2654435761) ^ (b * 2246822519)) >>> 0;
+
     if (hasTileset) {
-      // Tiny Swords Tilemap_color1: 576×384 → 9 cols × 6 rows at 64px each
-      // Frame layout: row 0 = base grass (solid green center ≈ frame 4)
-      //               row 2 = dirt/earth variants
-      // We scatter a few grass frame variants for a textured look.
-      const grassFrames = [4, 4, 4, 4, 3, 5]; // weight toward center tile
       for (let ty = 0; ty < this.mapHeight; ty++) {
         for (let tx = 0; tx < this.mapWidth; tx++) {
-          const frame = grassFrames[(tx * 3 + ty * 7) % grassFrames.length];
+          // Skip grass tile if this cell is on the path — dirt will be laid instead
+          if (this.isOnPath(tx, ty)) continue;
+
+          const frame = this.getGrassTileFrame(tx, ty);
+
           const tile = this.add.image(
             tx * TILE_SIZE + TILE_SIZE / 2,
             ty * TILE_SIZE + TILE_SIZE / 2,
@@ -196,40 +283,88 @@ export class GameScene extends Phaser.Scene {
             frame
           );
           tile.setDepth(TERRAIN_DEPTH - 1);
+
+          // Subtle per-tile variation for interior tiles
+          if (frame === 10) {
+            const h = hash(tx, ty);
+            // Slight random rotation (0 or PI) on ~30 % of center tiles
+            if ((h % 100) < 30) {
+              tile.setRotation(Math.PI);
+            }
+            // Subtle alpha variation
+            tile.setAlpha(0.9 + (h % 11) / 100); // 0.90 – 1.00
+          }
+
           this.tileLayer.add(tile);
+        }
+      }
+    }
+
+    // ── Dirt / path tiles (tileset_color2_ss) with autotile edges ──
+    if (hasDirtTileset) {
+      for (let ty = 0; ty < this.mapHeight; ty++) {
+        for (let tx = 0; tx < this.mapWidth; tx++) {
+          if (!this.isOnPath(tx, ty)) continue;
+
+          const frame = this.getPathTileFrame(tx, ty);
+
+          const dirtTile = this.add.image(
+            tx * TILE_SIZE + TILE_SIZE / 2,
+            ty * TILE_SIZE + TILE_SIZE / 2,
+            'tileset_color2_ss',
+            frame
+          );
+          dirtTile.setDepth(TERRAIN_DEPTH + 0.5);
+          dirtTile.setTint(0xddccaa); // Warm tint to deepen contrast vs bright grass
+          this.tileLayer.add(dirtTile);
         }
       }
     }
 
     const g = this.terrainLayer;
 
-    // Draw dirt path
-    // Path glow/shadow
-    g.lineStyle(TILE_SIZE + 12, 0x3d2b1f, 0.5);
+    // ── Dark edge outline around path for contrast ─────────────
+    g.lineStyle(2, 0x3a2a10, 0.55);
+    for (let ty = 0; ty < this.mapHeight; ty++) {
+      for (let tx = 0; tx < this.mapWidth; tx++) {
+        if (!this.isOnPath(tx, ty)) continue;
+        const px = tx * TILE_SIZE;
+        const py = ty * TILE_SIZE;
+        // Draw edge segment on each side that borders grass
+        if (!this.isOnPath(tx, ty - 1)) {
+          g.beginPath(); g.moveTo(px, py); g.lineTo(px + TILE_SIZE, py); g.strokePath();
+        }
+        if (!this.isOnPath(tx, ty + 1)) {
+          g.beginPath(); g.moveTo(px, py + TILE_SIZE); g.lineTo(px + TILE_SIZE, py + TILE_SIZE); g.strokePath();
+        }
+        if (!this.isOnPath(tx - 1, ty)) {
+          g.beginPath(); g.moveTo(px, py); g.lineTo(px, py + TILE_SIZE); g.strokePath();
+        }
+        if (!this.isOnPath(tx + 1, ty)) {
+          g.beginPath(); g.moveTo(px + TILE_SIZE, py); g.lineTo(px + TILE_SIZE, py + TILE_SIZE); g.strokePath();
+        }
+      }
+    }
+
+    // ── Worn trail center line ───────────────────────────────────
+    g.lineStyle(2, 0x6b4c1e, 0.25);
     this.drawPath(g, waypoints);
 
-    // Main path
-    g.lineStyle(TILE_SIZE, 0x8b6914, 1);
-    this.drawPath(g, waypoints);
-
-    // Path edge highlight
-    g.lineStyle(TILE_SIZE - 8, 0xa07820, 0.6);
-    this.drawPath(g, waypoints);
-
-    // Path center track
-    g.lineStyle(4, 0xc4a240, 0.4);
-    this.drawPath(g, waypoints);
-
-    // Build zone foundations (stone-ish)
+    // ── Build zone styling ───────────────────────────────────────
     for (const zone of buildZones) {
-      // Stone base
-      g.fillStyle(0x5a5a6a, 0.85);
-      g.fillRect(zone.x * TILE_SIZE, zone.y * TILE_SIZE, zone.width * TILE_SIZE, zone.height * TILE_SIZE);
-      // Stone border
-      g.lineStyle(3, 0x8888aa, 0.9);
-      g.strokeRect(zone.x * TILE_SIZE, zone.y * TILE_SIZE, zone.width * TILE_SIZE, zone.height * TILE_SIZE);
-      // Inner pattern
-      g.lineStyle(1, 0x6a6a7a, 0.4);
+      const zx = zone.x * TILE_SIZE;
+      const zy = zone.y * TILE_SIZE;
+      const zw = zone.width * TILE_SIZE;
+      const zh = zone.height * TILE_SIZE;
+
+      // Stone platform
+      g.fillStyle(0x8b7d6b, 0.45);
+      g.fillRoundedRect(zx + 2, zy + 2, zw - 4, zh - 4, 6);
+      // Outer border — warm stone
+      g.lineStyle(2, 0xccbb99, 0.65);
+      g.strokeRoundedRect(zx + 2, zy + 2, zw - 4, zh - 4, 6);
+      // Inner grid lines for individual tiles
+      g.lineStyle(1, 0xaabb88, 0.3);
       for (let tx = zone.x; tx < zone.x + zone.width; tx++) {
         for (let ty = zone.y; ty < zone.y + zone.height; ty++) {
           g.strokeRect(tx * TILE_SIZE + 4, ty * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
@@ -237,59 +372,131 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // ── Start marker — enemy spawn (Barracks or fallback arrow) ──
+    // ── Start marker — enemy spawn (Castle Red) ──────────────────
     if (waypoints.length > 0) {
       const sp = waypoints[0];
       const sx = sp.x * TILE_SIZE + TILE_SIZE / 2;
       const sy = sp.y * TILE_SIZE + TILE_SIZE / 2;
-      // Red glow ring
-      g.fillStyle(0xff0000, 0.15);
-      g.fillCircle(sx, sy, TILE_SIZE * 0.65);
-      g.lineStyle(2, 0xff4444, 0.7);
-      g.strokeCircle(sx, sy, TILE_SIZE * 0.48);
-      if (this.textures.exists('building_barracks')) {
-        // Tiny Swords Barracks for the enemy base (Red Buildings)
-        const barracks = this.add.image(sx, sy - 4, 'building_barracks');
-        barracks.setScale(0.22);
-        barracks.setDepth(TERRAIN_DEPTH + 2);
-        barracks.setTint(0xff8888); // slight red tint to mark it as enemy
+
+      // Pulsing red glow circle behind castle
+      const redGlow = this.add.circle(sx, sy, TILE_SIZE * 1.3, 0xff0000, 0.15);
+      redGlow.setDepth(TERRAIN_DEPTH + 1);
+      this.tweens.add({
+        targets: redGlow,
+        alpha: { from: 0.08, to: 0.22 },
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+
+      if (this.textures.exists('castle_red')) {
+        // Castle is 320×256 — scale to span ~2 tiles wide
+        const castleRed = this.add.image(sx, sy - 16, 'castle_red');
+        castleRed.setScale(0.5);
+        castleRed.setDepth(TERRAIN_DEPTH + 2);
+        castleRed.setOrigin(0.5, 0.65);
       } else {
-        // Fallback: filled red arrow pointing right
         g.fillStyle(0xdd2222, 0.9);
         g.fillTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
-        g.lineStyle(2, 0xff6666, 0.9);
-        g.strokeTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
       }
+
+      // Label
+      const spawnLabel = this.add.text(sx, sy + TILE_SIZE * 0.6, 'SPAWN', {
+        fontSize: '10px', fontFamily: 'Arial', fontStyle: 'bold',
+        color: '#ff6666', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(TERRAIN_DEPTH + 3).setAlpha(0.8);
     }
 
-    // ── End marker — player castle ────────────────────────────────
+    // ── End marker — player castle (Castle Blue) ─────────────────
     if (waypoints.length > 1) {
       const ep = waypoints[waypoints.length - 1];
       const ex = ep.x * TILE_SIZE + TILE_SIZE / 2;
       const ey = ep.y * TILE_SIZE + TILE_SIZE / 2;
-      // Glow ring
-      g.fillStyle(0x2244ff, 0.2);
-      g.fillCircle(ex, ey, TILE_SIZE * 0.7);
-      g.lineStyle(3, 0x4466ff, 0.9);
-      g.strokeCircle(ex, ey, TILE_SIZE * 0.48);
-      // Castle tower silhouette (keep-style)
-      const tw = 22; const th = 20; const bx = ex - tw / 2; const by = ey - th / 2;
-      g.fillStyle(0x4466ff, 0.85);
-      g.fillRect(bx, by, tw, th);
-      // Merlons across the top
-      for (let m = 0; m < 3; m++) {
-        g.fillRect(bx + m * 8, by - 7, 6, 8);
+
+      // Pulsing blue glow circle behind castle
+      const blueGlow = this.add.circle(ex, ey, TILE_SIZE * 1.3, 0x2244ff, 0.15);
+      blueGlow.setDepth(TERRAIN_DEPTH + 1);
+      this.tweens.add({
+        targets: blueGlow,
+        alpha: { from: 0.08, to: 0.22 },
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+
+      if (this.textures.exists('castle_blue')) {
+        // Castle is 320×256 — scale to span ~2 tiles wide
+        const castleBlue = this.add.image(ex, ey - 16, 'castle_blue');
+        castleBlue.setScale(0.5);
+        castleBlue.setDepth(TERRAIN_DEPTH + 2);
+        castleBlue.setOrigin(0.5, 0.65);
+      } else {
+        g.fillStyle(0x4466ff, 0.85);
+        g.fillRect(ex - 11, ey - 10, 22, 20);
       }
-      // Arrow slit
-      g.fillStyle(0x0a0a30, 1);
-      g.fillRect(ex - 2, by + 4, 4, 8);
-      // Overlay building sprite for extra detail
-      if (this.textures.exists('building_blue')) {
-        const castle = this.add.image(ex, ey, 'building_blue');
-        castle.setScale(0.26);
-        castle.setDepth(TERRAIN_DEPTH + 2);
-        castle.setTint(0xaaccff);
+
+      // Label
+      const baseLabel = this.add.text(ex, ey + TILE_SIZE * 0.6, 'BASE', {
+        fontSize: '10px', fontFamily: 'Arial', fontStyle: 'bold',
+        color: '#6688ff', stroke: '#000000', strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(TERRAIN_DEPTH + 3).setAlpha(0.8);
+    }
+  }
+
+  /** Draw a dashed rectangle on the given Graphics object. */
+  private drawDashedRect(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    dashLen: number,
+    gapLen: number,
+    lineWidth: number,
+    color: number,
+    alpha: number
+  ): void {
+    g.lineStyle(lineWidth, color, alpha);
+    // Top edge
+    this.drawDashedLine(g, x, y, x + w, y, dashLen, gapLen);
+    // Right edge
+    this.drawDashedLine(g, x + w, y, x + w, y + h, dashLen, gapLen);
+    // Bottom edge
+    this.drawDashedLine(g, x + w, y + h, x, y + h, dashLen, gapLen);
+    // Left edge
+    this.drawDashedLine(g, x, y + h, x, y, dashLen, gapLen);
+  }
+
+  /** Draw a single dashed line segment. */
+  private drawDashedLine(
+    g: Phaser.GameObjects.Graphics,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    dashLen: number,
+    gapLen: number
+  ): void {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const nx = dx / len;
+    const ny = dy / len;
+    let drawn = 0;
+    let drawing = true;
+    while (drawn < len) {
+      const segLen = drawing ? dashLen : gapLen;
+      const end = Math.min(drawn + segLen, len);
+      if (drawing) {
+        g.beginPath();
+        g.moveTo(x1 + nx * drawn, y1 + ny * drawn);
+        g.lineTo(x1 + nx * end, y1 + ny * end);
+        g.strokePath();
       }
+      drawn = end;
+      drawing = !drawing;
     }
   }
 
@@ -309,26 +516,38 @@ export class GameScene extends Phaser.Scene {
     // Spritesheet-based assets with frame counts (pick random frame to vary appearance)
     // Tree frames: 256×256px → scale 0.17 ≈ 43px (~0.67 tiles). Rocks are single images.
     const decoAssets: Array<{ key: string; frames: number; scale: number; isSprite: boolean }> = [
-      { key: 'deco_tree1', frames: 6,  scale: 0.17,  isSprite: true  }, // 256×256 frames
-      { key: 'deco_tree2', frames: 6,  scale: 0.17,  isSprite: true  },
-      { key: 'deco_bush1', frames: 8,  scale: 0.22,  isSprite: true  }, // 128×128 frames
-      { key: 'deco_rock1', frames: 1,  scale: 0.45,  isSprite: false },
-      { key: 'deco_rock2', frames: 1,  scale: 0.45,  isSprite: false },
+      { key: 'deco_tree1',  frames: 6, scale: 0.28, isSprite: true  }, // 256×256 frames — scaled up
+      { key: 'deco_tree2',  frames: 6, scale: 0.28, isSprite: true  },
+      { key: 'deco_bush1',  frames: 8, scale: 0.35, isSprite: true  }, // 128×128 frames — scaled up
+      { key: 'deco_bush2',  frames: 8, scale: 0.35, isSprite: true  },
+      { key: 'deco_bush3',  frames: 8, scale: 0.35, isSprite: true  },
+      { key: 'deco_rock1',  frames: 1, scale: 0.7, isSprite: false },
+      { key: 'deco_rock2',  frames: 1, scale: 0.7, isSprite: false },
+      { key: 'deco_rock3',  frames: 1, scale: 0.7, isSprite: false },
+      { key: 'deco_rock4',  frames: 1, scale: 0.7, isSprite: false },
     ];
+
+    // Filter to only assets whose textures exist
+    const availableAssets = decoAssets.filter((a) => this.textures.exists(a.key));
 
     // Weighted selection: more rocks/bushes at edges, more trees inland
-    const weightedAssets = [
-      ...Array(4).fill(decoAssets[0]), // tree1
-      ...Array(4).fill(decoAssets[1]), // tree2
-      ...Array(5).fill(decoAssets[2]), // bush
-      ...Array(3).fill(decoAssets[3]), // rock1
-      ...Array(2).fill(decoAssets[4]), // rock2
-    ];
+    const weightedAssets: Array<{ key: string; frames: number; scale: number; isSprite: boolean }> = [];
+    for (const asset of availableAssets) {
+      if (asset.key.startsWith('deco_tree')) {
+        for (let i = 0; i < 4; i++) weightedAssets.push(asset);
+      } else if (asset.key.startsWith('deco_bush')) {
+        for (let i = 0; i < 3; i++) weightedAssets.push(asset);
+      } else if (asset.key.startsWith('deco_rock')) {
+        for (let i = 0; i < 2; i++) weightedAssets.push(asset);
+      }
+    }
 
-    // Scatter 28 decorations on non-path, non-buildzone tiles
+    if (weightedAssets.length === 0) return;
+
+    // Scatter decorations on non-path, non-buildzone tiles
     const placed: Array<{ x: number; y: number }> = [];
     let attempts = 0;
-    while (placed.length < 28 && attempts < 600) {
+    while (placed.length < 24 && attempts < 500) {
       attempts++;
       const tx = Math.floor(Math.random() * this.mapWidth);
       const ty = Math.floor(Math.random() * this.mapHeight);
@@ -373,7 +592,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnFloatingClouds(): void {
-    const cloudKeys = ['deco_cloud1', 'deco_cloud2'];
+    const cloudKeys = ['deco_cloud1', 'deco_cloud2', 'deco_cloud3', 'deco_cloud4'];
     for (let i = 0; i < 6; i++) {
       const key = cloudKeys[i % cloudKeys.length];
       if (!this.textures.exists(key)) continue;
@@ -479,12 +698,12 @@ export class GameScene extends Phaser.Scene {
   private playWaveFanfare(): void {
     this.audio.playWaveStart();
 
-    // Quick pulse of all tower soldiers
+    // Quick pulse of all tower soldiers — use each tower's own scale
     for (const [, tv] of this.towers) {
       this.tweens.add({
         targets: tv.soldier,
-        scaleX: SOLDIER_SCALE * 1.3,
-        scaleY: SOLDIER_SCALE * 1.3,
+        scaleX: tv.soldier.scaleX * 1.3,
+        scaleY: tv.soldier.scaleY * 1.3,
         yoyo: true,
         duration: 200,
         ease: 'Back.Out',
@@ -568,8 +787,27 @@ export class GameScene extends Phaser.Scene {
         const tv = this.towers.get(id)!;
         tv.base.setPosition(px, py);
         tv.soldier.setPosition(px, py - 8);
+        tv.aura.setPosition(px, py + 4);
       }
     }
+  }
+
+  /** Get the element color for a tower configId. */
+  private getElementColor(configId: string): number {
+    const element = configId.split('_')[0];
+    switch (element) {
+      case 'fire': return 0xff4400;
+      case 'water': return 0x0088ff;
+      case 'ice': return 0x88ccff;
+      case 'poison': return 0x44cc44;
+      default: return 0xaaaaaa;
+    }
+  }
+
+  /** Resolve the TowerAssetInfo for a given tower configId. */
+  private getTowerAssetInfo(configId: string): TowerAssetInfo {
+    const element = configId.split('_')[0] as string;
+    return TOWER_ASSETS.find((a) => a.element === element) ?? TOWER_ASSETS[TOWER_ASSETS.length - 1];
   }
 
   private createTowerVisual(
@@ -578,47 +816,63 @@ export class GameScene extends Phaser.Scene {
     px: number,
     py: number
   ): TowerVisual {
-    const element = tower.configId.split('_')[0] as string;
-    const assetInfo = TOWER_ASSETS.find((a) => a.element === element) ?? TOWER_ASSETS[TOWER_ASSETS.length - 1];
-    const soldierKey = assetInfo.key;
+    const assetInfo = this.getTowerAssetInfo(tower.configId);
+    const soldierKey = assetInfo.idleKey;
 
     // Building base (static image, sits behind the soldier)
     const base = this.add.image(px, py, assetInfo.buildingKey);
     base.setScale(BUILDING_SCALE);
     base.setDepth(ENTITY_DEPTH + py * 0.001);
-    base.setOrigin(0.5, 0.85);
+    base.setOrigin(0.5, 0.7);
 
     // Soldier sprite (animated, sits on top of building)
     const soldier = this.add.sprite(px, py - 8, soldierKey);
-    soldier.setScale(SOLDIER_SCALE);
+    soldier.setScale(assetInfo.unitScale);
     soldier.setDepth(ENTITY_DEPTH + py * 0.001 + 0.5);
-    soldier.play(`${soldierKey}_idle`);
+    soldier.play(`${assetInfo.idleKey}_idle`);
 
     // Shadow
     const shadowEllipse = this.add.ellipse(px, py + 8, 24, 8, 0x000000, 0.3);
     shadowEllipse.setDepth(SHADOW_DEPTH);
+
+    // Element aura (pulsing colored glow)
+    const elementColor = this.getElementColor(tower.configId);
+    const aura = this.add.ellipse(px, py + 4, 30, 10, elementColor, 0.15);
+    aura.setDepth(SHADOW_DEPTH + 0.5);
+    this.tweens.add({
+      targets: aura,
+      alpha: { from: 0.08, to: 0.2 },
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
 
     // Range circle (hidden by default, shown on select)
     const rangeCircle = this.add.graphics();
     rangeCircle.setDepth(ENTITY_DEPTH - 1);
     rangeCircle.setVisible(false);
 
-    return { base, soldier, rangeCircle, selected: false };
+    return { base, soldier, rangeCircle, aura, selected: false };
   }
 
   private destroyTowerVisual(tv: TowerVisual): void {
     tv.base.destroy();
     tv.soldier.destroy();
     tv.rangeCircle.destroy();
+    tv.aura.destroy();
   }
 
   private playTowerPlaceAnimation(tv: TowerVisual, px: number, py: number): void {
     this.audio.playTowerPlace();
 
+    // Use the soldier's current scale as the target (set by createTowerVisual)
+    const soldierTargetScale = tv.soldier.scaleX;
+
     // Pop in from above
     tv.soldier.setPosition(px, py - 40);
     tv.soldier.setAlpha(0);
-    tv.soldier.setScale(SOLDIER_SCALE * 0.5);
+    tv.soldier.setScale(soldierTargetScale * 0.5);
     tv.base.setAlpha(0);
 
     this.tweens.add({
@@ -630,11 +884,11 @@ export class GameScene extends Phaser.Scene {
       alpha: 1,
       scaleX: (target: Phaser.GameObjects.GameObject) => {
         const go = target as Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
-        return go === tv.soldier ? SOLDIER_SCALE : BUILDING_SCALE;
+        return go === tv.soldier ? soldierTargetScale : BUILDING_SCALE;
       },
       scaleY: (target: Phaser.GameObjects.GameObject) => {
         const go = target as Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
-        return go === tv.soldier ? SOLDIER_SCALE : BUILDING_SCALE;
+        return go === tv.soldier ? soldierTargetScale : BUILDING_SCALE;
       },
       duration: 250,
       ease: 'Back.Out',
@@ -707,9 +961,18 @@ export class GameScene extends Phaser.Scene {
       sprite.play(idleAnim);
     }
 
-    // Invisible enemies get low alpha
+    // Invisible enemies: shimmer effect with alpha tween + cyan tint
     if (enemy.type === 'invisible') {
       sprite.setAlpha(0.45);
+      sprite.setTint(0x88ddff);
+      this.tweens.add({
+        targets: sprite,
+        alpha: { from: 0.15, to: 0.45 },
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
     }
 
     // HP bar (above enemy)
@@ -759,10 +1022,20 @@ export class GameScene extends Phaser.Scene {
     const hpRatio = enemy.hp / ev.maxHp;
     this.drawHpBar(hpBar, px, py - 14 * (sprite.scale / 2), hpRatio);
 
-    // Hit flash on damage
+    // Hit flash on damage + floating combat text
     if (enemy.hp < ev.lastHp) {
+      const damage = ev.lastHp - enemy.hp;
       sprite.setTint(0xffffff);
-      this.time.delayedCall(80, () => { if (sprite.active) sprite.clearTint(); });
+      this.time.delayedCall(80, () => {
+        if (sprite.active) {
+          // Restore cyan tint for invisible enemies, otherwise clear
+          if (ev.type === 'invisible') {
+            sprite.setTint(0x88ddff);
+          } else {
+            sprite.clearTint();
+          }
+        }
+      });
       // Tiny knockback wiggle
       this.tweens.add({
         targets: sprite,
@@ -770,6 +1043,10 @@ export class GameScene extends Phaser.Scene {
         duration: 60,
         yoyo: true,
       });
+      // Floating damage text
+      if (damage > 0) {
+        this.spawnFloatingText(px, py - 10, `-${damage}`, 0xff3333);
+      }
       ev.lastHp = enemy.hp;
     }
   }
@@ -801,6 +1078,9 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.audio.playEnemyDeath();
     }
+
+    // Floating skull text at death position
+    this.spawnFloatingText(x, y - 10, '💀', 0xffd700, 16);
 
     // Death animation before destroy
     sprite.setTint(0xff4400);
@@ -969,6 +1249,47 @@ export class GameScene extends Phaser.Scene {
     fx.once('animationcomplete', () => { fx.destroy(); });
   }
 
+  /** Spawn floating combat / reward text that drifts up and fades out. */
+  private spawnFloatingText(
+    x: number,
+    y: number,
+    text: string,
+    color: number,
+    fontSize: number = 14
+  ): void {
+    const colorStr = '#' + color.toString(16).padStart(6, '0');
+    const txt = this.add.text(x, y, text, {
+      fontFamily: '"Arial Black", Arial, sans-serif',
+      fontSize: `${fontSize}px`,
+      color: colorStr,
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    txt.setOrigin(0.5, 0.5);
+    txt.setDepth(FX_DEPTH + 1);
+    txt.setAlpha(0);
+
+    this.tweens.add({
+      targets: txt,
+      y: y - 30,
+      alpha: { from: 0, to: 1 },
+      duration: 200,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: txt,
+          y: txt.y - 10,
+          alpha: 0,
+          duration: 600,
+          ease: 'Quad.In',
+          onComplete: () => {
+            txt.destroy();
+          },
+        });
+      },
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // External event handlers
   // ─────────────────────────────────────────────────────────────────
@@ -1005,18 +1326,20 @@ export class GameScene extends Phaser.Scene {
       data.elementColor
     );
 
-    // Play tower fire animation
+    // Play tower attack animation
     for (const [, tv] of this.towers) {
       const towerWorldX = tv.base.x;
       const towerWorldY = tv.base.y;
       const dist = Phaser.Math.Distance.Between(towerWorldX, towerWorldY, data.fromX, data.fromY);
       if (dist < 8) {
-        const soldierKey = tv.soldier.texture.key;
-        const fireAnim = `${soldierKey}_fire`;
-        if (this.anims.exists(fireAnim)) {
-          tv.soldier.play(fireAnim);
+        // Derive the attack anim key from the idle texture key
+        const currentTextureKey = tv.soldier.texture.key;
+        const attackAnimKey = `${currentTextureKey.replace('_idle', '_attack')}_attack`;
+        const idleAnimKey = `${currentTextureKey}_idle`;
+        if (this.anims.exists(attackAnimKey)) {
+          tv.soldier.play(attackAnimKey);
           tv.soldier.once('animationcomplete', () => {
-            if (tv.soldier.active) tv.soldier.play(`${soldierKey}_idle`);
+            if (tv.soldier.active) tv.soldier.play(idleAnimKey);
           });
         }
         break;

@@ -32,15 +32,24 @@ export class HudScene extends Phaser.Scene {
   private hpBarFill!: Phaser.GameObjects.Graphics;
   private hpBarBase!: Phaser.GameObjects.Image | null;
   private hpBarFillImg?: Phaser.GameObjects.Image;
+  private hpBarGlow!: Phaser.GameObjects.Graphics;
   private phaseText!: Phaser.GameObjects.Text;
   private prepTimerText!: Phaser.GameObjects.Text;
   private startWaveButton!: Phaser.GameObjects.Container;
   private classIcon!: Phaser.GameObjects.Container;
   private playerElement: ElementType | null = null;
   private prevBaseHp = -1;
-  private enemyCountText!: Phaser.GameObjects.Text;
   private towerPanel: TowerPanel | null = null;
   private hudGold = 0;
+
+  /* Tracking for polish features */
+  private lastWaveText = '';
+  private hpLowPulseTween: Phaser.Tweens.Tween | null = null;
+  private lastAnnouncedPhase: GamePhase | null = null;
+  private combatVignetteGfx: Phaser.GameObjects.Graphics | null = null;
+  private startWavePulseTween: Phaser.Tweens.Tween | null = null;
+  private prepPhasePulseTween: Phaser.Tweens.Tween | null = null;
+  private goldBonusText: Phaser.GameObjects.Text | null = null;
 
   constructor() {
     super({ key: 'HudScene' });
@@ -55,7 +64,14 @@ export class HudScene extends Phaser.Scene {
     const H = this.cameras.main.height;
 
     // ── Gold panel (top-left) ──────────────────────────────────────
-    this.createPanel(14, 14, 160, 38);
+    const goldPanel = this.createPanel(14, 14, 180, 38);
+
+    // Subtle gold shimmer border
+    const goldBorder = this.add.graphics();
+    goldBorder.lineStyle(1, 0xffd700, 0.4);
+    goldBorder.strokeRoundedRect(14, 14, 180, 38, 8);
+    goldBorder.setScrollFactor(0).setDepth(100);
+
     this.add.text(22, 20, '💰', { fontSize: '20px' }).setScrollFactor(0).setDepth(101);
     this.goldText = this.add.text(50, 21, 'Gold: 0', {
       fontSize: '20px',
@@ -65,7 +81,7 @@ export class HudScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setScrollFactor(0).setDepth(101);
 
-    // ── Wave + enemy count (top-center) ───────────────────────────
+    // ── Wave panel (top-center) ───────────────────────────────────
     this.createPanel(W / 2 - 110, 14, 220, 38);
     this.waveText = this.add.text(W / 2, 22, 'Wave 0 / 20', {
       fontSize: '18px',
@@ -87,6 +103,9 @@ export class HudScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setScrollFactor(0).setDepth(101);
 
+    // HP bar background glow
+    this.hpBarGlow = this.add.graphics().setScrollFactor(0).setDepth(100);
+
     // HP bar (just below top bar)
     this.hpBarFill = this.add.graphics().setScrollFactor(0).setDepth(101);
 
@@ -99,15 +118,6 @@ export class HudScene extends Phaser.Scene {
       this.hpBarFillImg = this.add.image(barLeft, 54, 'ui_big_bar_fill')
         .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16).setScrollFactor(0).setDepth(101);
     }
-
-    // ── Enemy count (below wave text) ─────────────────────────────
-    this.enemyCountText = this.add.text(W / 2, 52, '', {
-      fontSize: '13px',
-      fontFamily: 'Arial',
-      color: '#ff9966',
-      stroke: '#000000',
-      strokeThickness: 1,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101);
 
     // ── Class icon (bottom-left) ───────────────────────────────────
     this.classIcon = this.createClassIcon(70, H - 70);
@@ -143,9 +153,26 @@ export class HudScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
 
   private createPanel(x: number, y: number, w: number, h: number): Phaser.GameObjects.Graphics {
+    // Try WoodTable texture first
+    if (this.textures.exists('ui_wood_table')) {
+      const img = this.add.image(x + w / 2, y + h / 2, 'ui_wood_table');
+      img.setDisplaySize(w, h);
+      img.setAlpha(0.85);
+      img.setScrollFactor(0).setDepth(100);
+
+      // Dark overlay for readability
+      const overlay = this.add.graphics();
+      overlay.fillStyle(0x000000, 0.3);
+      overlay.fillRoundedRect(x, y, w, h, 8);
+      overlay.setScrollFactor(0).setDepth(100);
+    }
+
+    // Graphics fallback (also serves as border/frame even when texture exists)
     const g = this.add.graphics();
-    g.fillStyle(0x0a0a20, 0.82);
-    g.fillRoundedRect(x, y, w, h, 8);
+    if (!this.textures.exists('ui_wood_table')) {
+      g.fillStyle(0x0a0a20, 0.82);
+      g.fillRoundedRect(x, y, w, h, 8);
+    }
     g.lineStyle(1, 0x6666aa, 0.9);
     g.strokeRoundedRect(x, y, w, h, 8);
     g.setScrollFactor(0).setDepth(100);
@@ -189,49 +216,48 @@ export class HudScene extends Phaser.Scene {
 
   private createStartWaveButton(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
+    const btnW = 220;
+    const btnH = 48;
 
-    // Try to use Tiny Swords button if available, else draw our own
-    const hasTsBtn = this.textures.exists('ui_btn_blue_regular');
+    const gfx = this.add.graphics();
+    const drawBtn = (state: 'normal' | 'hover' | 'pressed') => {
+      gfx.clear();
+      // Shadow
+      gfx.fillStyle(0x000000, 0.35);
+      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 3, btnW, btnH, 10);
+      // Body
+      const fills = { normal: 0x0050aa, hover: 0x0066cc, pressed: 0x003d88 };
+      gfx.fillStyle(fills[state], 1);
+      gfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      // Top highlight
+      gfx.fillStyle(0xffffff, state === 'hover' ? 0.14 : 0.07);
+      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 1, btnW - 4, btnH / 2 - 2, { tl: 8, tr: 8, bl: 0, br: 0 });
+      // Border
+      const borders = { normal: [0x4488ff, 0.85] as const, hover: [0x66aaff, 1] as const, pressed: [0x3377ee, 1] as const };
+      const [bc, ba] = borders[state];
+      gfx.lineStyle(2, bc, ba);
+      gfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+    };
+    drawBtn('normal');
 
-    let bg: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
-    if (hasTsBtn) {
-      const img = this.add.image(0, 0, 'ui_btn_blue_regular');
-      img.setScale(0.65);
-      bg = img;
-      bg.setInteractive({ useHandCursor: true });
+    const hitArea = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
 
-      bg.on('pointerover', () => { (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_pressed'); });
-      bg.on('pointerout',  () => { (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_regular'); });
-      bg.on('pointerdown', () => { (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_pressed'); });
-      bg.on('pointerup',   () => {
-        (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_regular');
-        this.handleStartWave();
-      });
-    } else {
-      const gfx = this.add.graphics();
-      gfx.fillStyle(0x0055cc, 1);
-      gfx.fillRoundedRect(-90, -24, 180, 48, 10);
-      gfx.lineStyle(2, 0x4488ff, 1);
-      gfx.strokeRoundedRect(-90, -24, 180, 48, 10);
-      bg = gfx;
-      const hitArea = this.add.rectangle(0, 0, 180, 48, 0x000000, 0)
-        .setInteractive({ useHandCursor: true });
-      hitArea.on('pointerover', () => { gfx.clear(); gfx.fillStyle(0x0077ee, 1); gfx.fillRoundedRect(-90, -24, 180, 48, 10); });
-      hitArea.on('pointerout', () => { gfx.clear(); gfx.fillStyle(0x0055cc, 1); gfx.fillRoundedRect(-90, -24, 180, 48, 10); gfx.lineStyle(2, 0x4488ff, 1); gfx.strokeRoundedRect(-90, -24, 180, 48, 10); });
-      hitArea.on('pointerup', () => { this.handleStartWave(); });
-      container.add(hitArea);
-    }
+    hitArea.on('pointerover', () => { drawBtn('hover'); });
+    hitArea.on('pointerout', () => { drawBtn('normal'); });
+    hitArea.on('pointerdown', () => { drawBtn('pressed'); });
+    hitArea.on('pointerup', () => { drawBtn('normal'); this.handleStartWave(); });
 
     const label = this.add.text(0, 0, '⚔  START WAVE', {
-      fontSize: '20px',
+      fontSize: '18px',
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffffff',
-      stroke: '#002244',
+      stroke: '#001133',
       strokeThickness: 3,
     }).setOrigin(0.5);
 
-    container.add([bg, label]);
+    container.add([gfx, label, hitArea]);
     (container as unknown as { label: Phaser.GameObjects.Text }).label = label;
 
     return container;
@@ -254,6 +280,50 @@ export class HudScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────────────────────────
+  // Start Wave button pulse (prep phase attention-draw)
+  // ─────────────────────────────────────────────────────────────────
+
+  private startButtonPulse(): void {
+    if (this.startWavePulseTween) return;
+    this.startWavePulseTween = this.tweens.add({
+      targets: this.startWaveButton,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
+  }
+
+  private stopButtonPulse(): void {
+    if (this.startWavePulseTween) {
+      this.startWavePulseTween.stop();
+      this.startWavePulseTween = null;
+      this.startWaveButton.setScale(1);
+    }
+  }
+
+  /** Flash the start-wave button green briefly (e.g. when a tower is placed). */
+  flashStartWaveButton(): void {
+    if (!this.startWaveButton || !this.startWaveButton.visible) return;
+    const children = this.startWaveButton.getAll() as Phaser.GameObjects.GameObject[];
+    for (const child of children) {
+      if (child instanceof Phaser.GameObjects.Image) {
+        child.setTint(0x00ff88);
+        this.time.delayedCall(200, () => { child.clearTint(); });
+        return;
+      }
+    }
+    // Fallback: tint the label text
+    const label = (this.startWaveButton as unknown as { label: Phaser.GameObjects.Text }).label;
+    if (label) {
+      label.setTint(0x00ff88);
+      this.time.delayedCall(200, () => { label.clearTint(); });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
   // State sync
   // ─────────────────────────────────────────────────────────────────
 
@@ -268,23 +338,48 @@ export class HudScene extends Phaser.Scene {
     }
     this.towerPanel?.setGold(newGold);
 
-    // Wave
-    this.waveText.setText(state.wave === 0 ? 'Wave: Ready' : `Wave ${state.wave} / ${state.maxWaves}`);
-
-    // Enemy count
+    // Wave — integrate enemy count when in combat
     const alive = Object.values(state.enemies).filter((e) => e.alive).length;
-    this.enemyCountText.setText(alive > 0 ? `👾 ${alive} enemies` : '');
+    let waveStr: string;
+    if (state.wave === 0) {
+      waveStr = 'Wave: Ready';
+    } else if (alive > 0) {
+      waveStr = `Wave ${state.wave} / ${state.maxWaves} · 👾 ${alive}`;
+    } else {
+      waveStr = `Wave ${state.wave} / ${state.maxWaves}`;
+    }
+    if (this.waveText.text !== waveStr) {
+      this.waveText.setText(waveStr);
+      // Pulse on new wave start (wave number changed)
+      const waveKey = `w${state.wave}`;
+      if (this.lastWaveText !== waveKey && state.wave > 0) {
+        this.tweens.add({
+          targets: this.waveText,
+          scaleX: 1.2,
+          scaleY: 1.2,
+          duration: 200,
+          yoyo: true,
+          ease: 'Sine.InOut',
+        });
+      }
+      this.lastWaveText = waveKey;
+    }
 
     // HP
     const hpRatio = state.baseHp / state.maxBaseHp;
     const hpColor = hpRatio > 0.6 ? '#44ff44' : hpRatio > 0.3 ? '#ffee22' : '#ff3333';
+    const fillColor = hpRatio > 0.6 ? 0x44ff44 : hpRatio > 0.3 ? 0xffee22 : 0xff3333;
     this.hpText.setColor(hpColor);
     this.hpText.setText(`🏰 ${state.baseHp} / ${state.maxBaseHp}`);
 
-    // HP bar
+    // HP bar background glow
     const W = this.cameras.main.width;
     const panelW = 210;
-    const fillColor = hpRatio > 0.6 ? 0x44ff44 : hpRatio > 0.3 ? 0xffee22 : 0xff3333;
+    this.hpBarGlow.clear();
+    this.hpBarGlow.fillStyle(fillColor, 0.1);
+    this.hpBarGlow.fillRoundedRect(W - panelW - 18, 48, panelW + 8, 14, 4);
+
+    // HP bar
     if (this.hpBarFillImg) {
       // Tiny Swords sprite bar — scale fill width proportionally from left
       this.hpBarFillImg.setDisplaySize(Math.max(panelW * hpRatio, 2), 16);
@@ -297,6 +392,26 @@ export class HudScene extends Phaser.Scene {
       this.hpBarFill.fillRect(W - panelW - 14, 52, panelW * hpRatio, 6);
     }
 
+    // Low-HP pulsing red tint on HP text
+    if (hpRatio < 0.3 && hpRatio > 0) {
+      if (!this.hpLowPulseTween || !this.hpLowPulseTween.isPlaying()) {
+        this.hpLowPulseTween = this.tweens.add({
+          targets: this.hpText,
+          alpha: 0.5,
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.InOut',
+        });
+      }
+    } else {
+      if (this.hpLowPulseTween) {
+        this.hpLowPulseTween.stop();
+        this.hpLowPulseTween = null;
+        this.hpText.setAlpha(1);
+      }
+    }
+
     // Base damage shake
     if (this.prevBaseHp !== -1 && state.baseHp < this.prevBaseHp) {
       this.showDamageIndicator(state.baseHp, this.prevBaseHp);
@@ -306,14 +421,16 @@ export class HudScene extends Phaser.Scene {
     this.updatePlayerClass(state);
     this.updatePhaseDisplay(state.phase);
 
-    // Start wave button visibility
+    // Start wave button visibility + pulse
     if (state.phase === 'prep') {
       this.prepTimerText.setText(`⏱ Prep: ${Math.ceil(state.prepTimeRemaining)}s`);
       this.prepTimerText.setVisible(true);
       this.startWaveButton.setVisible(true);
+      this.startButtonPulse();
     } else {
       this.prepTimerText.setVisible(false);
       this.startWaveButton.setVisible(false);
+      this.stopButtonPulse();
     }
 
     if (state.phase === 'victory' || state.phase === 'defeat') {
@@ -413,6 +530,8 @@ export class HudScene extends Phaser.Scene {
       if (gameClient) {
         gameClient.selectTower(configId);
       }
+      // Flash start-wave button green when a tower is placed
+      this.flashStartWaveButton();
     });
   }
 
@@ -483,6 +602,10 @@ export class HudScene extends Phaser.Scene {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // Phase display with polish effects
+  // ─────────────────────────────────────────────────────────────────
+
   private updatePhaseDisplay(phase: GamePhase): void {
     const phaseMessages: Partial<Record<GamePhase, { text: string; color: string }>> = {
       prep:       { text: '🛡 PREP PHASE',    color: '#88ffff' },
@@ -496,7 +619,14 @@ export class HudScene extends Phaser.Scene {
     if (!msg) return;
 
     // Don't re-announce same phase
-    if (this.phaseText.text === msg.text && this.phaseText.visible) return;
+    if (this.lastAnnouncedPhase === phase && this.phaseText.visible) return;
+    this.lastAnnouncedPhase = phase;
+
+    // Cleanup previous prep pulse tween
+    if (this.prepPhasePulseTween) {
+      this.prepPhasePulseTween.stop();
+      this.prepPhasePulseTween = null;
+    }
 
     this.phaseText.setText(msg.text);
     this.phaseText.setColor(msg.color);
@@ -511,7 +641,46 @@ export class HudScene extends Phaser.Scene {
       ease: 'Back.Out',
     });
 
-    if (phase !== 'combat' && phase !== 'prep') {
+    // ── Phase-specific polish ──────────────────────────────────
+    if (phase === 'combat') {
+      this.showCombatVignette();
+      // Fade out announcement after delay
+      this.tweens.add({
+        targets: this.phaseText,
+        alpha: 0,
+        duration: 1500,
+        delay: 2000,
+        onComplete: () => {
+          this.phaseText.setVisible(false);
+          this.phaseText.setAlpha(1);
+        },
+      });
+    } else if (phase === 'post_wave') {
+      // Show "+gold" bonus text briefly
+      this.showPostWaveGoldBonus();
+      this.tweens.add({
+        targets: this.phaseText,
+        alpha: 0,
+        duration: 1500,
+        delay: 2000,
+        onComplete: () => {
+          this.phaseText.setVisible(false);
+          this.phaseText.setAlpha(1);
+        },
+      });
+    } else if (phase === 'prep') {
+      // Slow pulse for prep phase text (cyan)
+      this.phaseText.setColor('#88ffff');
+      this.prepPhasePulseTween = this.tweens.add({
+        targets: this.phaseText,
+        alpha: 0.5,
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+      // Don't auto-hide prep text — it stays visible during prep
+    } else if (phase !== 'victory' && phase !== 'defeat') {
       this.tweens.add({
         targets: this.phaseText,
         alpha: 0,
@@ -523,6 +692,113 @@ export class HudScene extends Phaser.Scene {
         },
       });
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Combat vignette (red screen-edge overlay that fades in then out)
+  // ─────────────────────────────────────────────────────────────────
+
+  private showCombatVignette(): void {
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
+
+    if (this.combatVignetteGfx) {
+      this.combatVignetteGfx.destroy();
+    }
+
+    const gfx = this.add.graphics().setScrollFactor(0).setDepth(99);
+    this.combatVignetteGfx = gfx;
+
+    const edgeW = 80;
+    // Left edge
+    gfx.fillStyle(0xff0000, 0.25);
+    gfx.fillRect(0, 0, edgeW, H);
+    // Right edge
+    gfx.fillRect(W - edgeW, 0, edgeW, H);
+    // Top edge
+    gfx.fillRect(0, 0, W, edgeW * 0.6);
+    // Bottom edge
+    gfx.fillRect(0, H - edgeW * 0.6, W, edgeW * 0.6);
+
+    // Inner, less opaque layer for gradient feel
+    gfx.fillStyle(0xff0000, 0.1);
+    gfx.fillRect(edgeW, 0, edgeW, H);
+    gfx.fillRect(W - edgeW * 2, 0, edgeW, H);
+    gfx.fillRect(0, edgeW * 0.6, W, edgeW * 0.4);
+    gfx.fillRect(0, H - edgeW, W, edgeW * 0.4);
+
+    gfx.setAlpha(0);
+
+    // Fade in then fade out
+    this.tweens.add({
+      targets: gfx,
+      alpha: 1,
+      duration: 400,
+      ease: 'Sine.In',
+      onComplete: () => {
+        this.tweens.add({
+          targets: gfx,
+          alpha: 0,
+          duration: 1200,
+          delay: 600,
+          ease: 'Sine.Out',
+          onComplete: () => {
+            gfx.destroy();
+            if (this.combatVignetteGfx === gfx) {
+              this.combatVignetteGfx = null;
+            }
+          },
+        });
+      },
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Post-wave gold bonus text
+  // ─────────────────────────────────────────────────────────────────
+
+  private showPostWaveGoldBonus(): void {
+    const W = this.cameras.main.width;
+
+    // Destroy previous bonus text if still around
+    if (this.goldBonusText) {
+      this.goldBonusText.destroy();
+      this.goldBonusText = null;
+    }
+
+    // Show a "+bonus gold" text below phase text
+    const bonus = 50; // standard wave-clear bonus
+    this.goldBonusText = this.add.text(W / 2, 130, `+${bonus} gold 💰`, {
+      fontSize: '22px',
+      fontFamily: '"Arial Black", Arial',
+      color: '#ffd700',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(102).setAlpha(0);
+
+    this.tweens.add({
+      targets: this.goldBonusText,
+      alpha: 1,
+      y: 125,
+      duration: 400,
+      ease: 'Back.Out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.goldBonusText,
+          alpha: 0,
+          y: 115,
+          duration: 800,
+          delay: 1200,
+          ease: 'Sine.In',
+          onComplete: () => {
+            if (this.goldBonusText) {
+              this.goldBonusText.destroy();
+              this.goldBonusText = null;
+            }
+          },
+        });
+      },
+    });
   }
 
   showBaseDamage(damage: number): void {

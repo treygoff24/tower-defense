@@ -10,9 +10,12 @@ export type AssetEntry =
 // Rows (top→bottom): idle, walk, firing, melee, destroyed
 // Hornet: frameWidth=48, frameHeight=24 — neutral hover / firing hover
 
-// ── Tower Soldier Spritesheets ───────────────────────────────────────
-// Each sheet: 80×112, frameWidth=16, frameHeight=16
-// Rows (top→bottom): idle, walk, crawl, fire, hit, death, throw (7 rows × 5 frames)
+// ── Tower Defenders — Tiny Swords Units ──────────────────────────────
+// Fire (Yellow): Warrior — 192×192 frames. Idle=8f, Attack1=4f, Run=6f
+// Water (Blue): Archer — 192×192 frames. Idle=6f, Shoot=8f, Run=4f
+// Ice (Black): Lancer — 320×320 frames. Idle=12f, Right_Attack=3f, Run=6f (use 192 width → 20f idle)
+// Poison (Purple): Monk — 192×192 frames. Idle=6f, Heal=11f, Run=4f
+// Shared (Blue): Warrior — 192×192 frames. Same as fire but blue faction
 
 // ── Effect Spritesheets ──────────────────────────────────────────────
 // big-explosion:   352×32  → frameWidth=32, frameHeight=32, 11 frames
@@ -32,12 +35,22 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'spritesheet', key: 'enemy_runner',    path: 'assets/Robots/Wasp.png',       frameWidth: 16, frameHeight: 16 },
   { kind: 'spritesheet', key: 'enemy_invisible', path: 'assets/Robots/Scarab.png',     frameWidth: 16, frameHeight: 16 },
 
-  // ── Tower Soldiers ─────────────────────────────────────────────────
-  { kind: 'spritesheet', key: 'tower_fire',   path: 'assets/Soldiers/Grenadier-Class.png',    frameWidth: 16, frameHeight: 16 },
-  { kind: 'spritesheet', key: 'tower_water',  path: 'assets/Soldiers/RadioOperator-Class.png', frameWidth: 16, frameHeight: 16 },
-  { kind: 'spritesheet', key: 'tower_ice',    path: 'assets/Soldiers/Sniper-Class.png',        frameWidth: 16, frameHeight: 16 },
-  { kind: 'spritesheet', key: 'tower_poison', path: 'assets/Soldiers/Assault-Class.png',       frameWidth: 16, frameHeight: 16 },
-  { kind: 'spritesheet', key: 'tower_shared', path: 'assets/Soldiers/MachineGunner-Class.png', frameWidth: 16, frameHeight: 16 },
+  // ── Tower Defenders — Tiny Swords Units ─────────────────────────────
+  // Fire element = Yellow faction
+  { kind: 'spritesheet', key: 'ts_fire_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Warrior/Warrior_Idle.png',    frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_fire_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Warrior/Warrior_Attack1.png', frameWidth: 192, frameHeight: 192 },
+  // Water element = Blue faction (Archer)
+  { kind: 'spritesheet', key: 'ts_water_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Archer/Archer_Idle.png',  frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_water_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Archer/Archer_Shoot.png', frameWidth: 192, frameHeight: 192 },
+  // Ice element = Black faction (Lancer) — NOTE: 320×320 frame size
+  { kind: 'spritesheet', key: 'ts_ice_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Lancer/Lancer_Idle.png',         frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_ice_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Lancer/Lancer_Right_Attack.png', frameWidth: 320, frameHeight: 320 },
+  // Poison element = Purple faction (Monk)
+  { kind: 'spritesheet', key: 'ts_poison_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Monk/Idle.png', frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_poison_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Monk/Heal.png', frameWidth: 192, frameHeight: 192 },
+  // Shared = Blue faction (Warrior)
+  { kind: 'spritesheet', key: 'ts_shared_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Warrior/Warrior_Idle.png',    frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_shared_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Warrior/Warrior_Attack1.png', frameWidth: 192, frameHeight: 192 },
 
   // ── Buildings (static backgrounds for towers) ──────────────────────
   { kind: 'image', key: 'building_blue',   path: 'assets/Tiny Swords (Free Pack)/Buildings/Blue Buildings/Tower.png' },
@@ -46,6 +59,16 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'image', key: 'building_barracks', path: 'assets/Tiny Swords (Free Pack)/Buildings/Red Buildings/Barracks.png' },
   { kind: 'image', key: 'building_black',  path: 'assets/Tiny Swords (Free Pack)/Buildings/Black Buildings/Tower.png' },
   { kind: 'image', key: 'building_purple', path: 'assets/Tiny Swords (Free Pack)/Buildings/Purple Buildings/Tower.png' },
+
+  // ── Castles (landmark buildings for start/end markers) ─────────────
+  { kind: 'image', key: 'castle_blue',   path: 'assets/Tiny Swords (Free Pack)/Buildings/Blue Buildings/Castle.png' },
+  { kind: 'image', key: 'castle_red',    path: 'assets/Tiny Swords (Free Pack)/Buildings/Red Buildings/Castle.png' },
+
+  // ── Archery buildings (for arrow-type towers) ──────────────────────
+  { kind: 'image', key: 'archery_yellow', path: 'assets/Tiny Swords (Free Pack)/Buildings/Yellow Buildings/Archery.png' },
+  { kind: 'image', key: 'archery_blue',   path: 'assets/Tiny Swords (Free Pack)/Buildings/Blue Buildings/Archery.png' },
+  { kind: 'image', key: 'archery_black',  path: 'assets/Tiny Swords (Free Pack)/Buildings/Black Buildings/Archery.png' },
+  { kind: 'image', key: 'archery_purple', path: 'assets/Tiny Swords (Free Pack)/Buildings/Purple Buildings/Archery.png' },
 
   // ── Effect Spritesheets ────────────────────────────────────────────
   { kind: 'spritesheet', key: 'fx_big_explosion',   path: 'assets/Effects/big-explosion.png',   frameWidth: 32, frameHeight: 32 },
@@ -65,6 +88,7 @@ export const ASSET_MANIFEST: AssetEntry[] = [
 
   // ── Terrain tiles ───────────────────────────────────────────────────
   { kind: 'spritesheet', key: 'tileset_color1_ss', path: 'assets/Tiny Swords (Free Pack)/Terrain/Tileset/Tilemap_color1.png', frameWidth: 64, frameHeight: 64 },
+  { kind: 'spritesheet', key: 'tileset_color2_ss', path: 'assets/Tiny Swords (Free Pack)/Terrain/Tileset/Tilemap_color2.png', frameWidth: 64, frameHeight: 64 },
 
   // ── UI Elements ─────────────────────────────────────────────────────
   { kind: 'image', key: 'ui_bar_base', path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Bars/SmallBar_Base.png' },
@@ -78,6 +102,9 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'image', key: 'ui_btn_blue_pressed',  path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Buttons/BigBlueButton_Pressed.png' },
   { kind: 'image', key: 'ui_btn_red_regular',   path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Buttons/BigRedButton_Regular.png' },
   { kind: 'image', key: 'ui_btn_red_pressed',   path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Buttons/BigRedButton_Pressed.png' },
+  { kind: 'image', key: 'ui_cursor',    path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Cursors/Cursor_01.png' },
+  { kind: 'image', key: 'ui_swords',    path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Swords/Swords.png' },
+  { kind: 'image', key: 'ui_wood_table_slots', path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Wood Table/WoodTable_Slots.png' },
 
   // ── Decorations ─────────────────────────────────────────────────────
   // Tree1/Tree2: 1536×256, 6 trees per sheet, each frame 256×256
@@ -85,31 +112,46 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'spritesheet', key: 'deco_tree2', path: 'assets/Tiny Swords (Free Pack)/Terrain/Resources/Wood/Trees/Tree2.png', frameWidth: 256, frameHeight: 256 },
   // Bushe1: 1024×128, 8 bushes per sheet, each frame 128×128
   { kind: 'spritesheet', key: 'deco_bush1', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe1.png', frameWidth: 128, frameHeight: 128 },
+  { kind: 'spritesheet', key: 'deco_bush2', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe2.png', frameWidth: 128, frameHeight: 128 },
+  { kind: 'spritesheet', key: 'deco_bush3', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe3.png', frameWidth: 128, frameHeight: 128 },
   { kind: 'image', key: 'deco_rock1',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock1.png' },
   { kind: 'image', key: 'deco_rock2',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock2.png' },
+  { kind: 'image', key: 'deco_rock3',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock3.png' },
+  { kind: 'image', key: 'deco_rock4',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock4.png' },
   { kind: 'image', key: 'deco_cloud1', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Clouds/Clouds_01.png' },
   { kind: 'image', key: 'deco_cloud2', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Clouds/Clouds_02.png' },
+  { kind: 'image', key: 'deco_cloud3', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Clouds/Clouds_03.png' },
+  { kind: 'image', key: 'deco_cloud4', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Clouds/Clouds_04.png' },
+  { kind: 'image', key: 'deco_gold_stone1', path: 'assets/Tiny Swords (Free Pack)/Terrain/Resources/Gold/Gold Stones/Gold Stone 1.png' },
+  { kind: 'image', key: 'deco_gold_stone2', path: 'assets/Tiny Swords (Free Pack)/Terrain/Resources/Gold/Gold Stones/Gold Stone 2.png' },
 ];
 
 // ── Typed helpers ────────────────────────────────────────────────────────────
 
 export interface TowerAssetInfo {
-  key: string;
+  /** Spritesheet key for idle animation */
+  idleKey: string;
+  /** Spritesheet key for attack animation */
+  attackKey: string;
   element: ElementType;
   buildingKey: string;
-  /** Which soldier row to play for 'idle' anim */
-  idleRow: number;
-  /** Which soldier row to play for 'fire' anim */
-  fireRow: number;
+  /** Frame size (192 for most, 320 for Lancer) */
+  frameSize: number;
+  /** Number of idle frames */
+  idleFrames: number;
+  /** Number of attack frames */
+  attackFrames: number;
   projKey: string;
+  /** Scale to fit on tile (64 / frameSize) */
+  unitScale: number;
 }
 
 export const TOWER_ASSETS: TowerAssetInfo[] = [
-  { key: 'tower_fire',   element: 'fire',   buildingKey: 'building_yellow', idleRow: 0, fireRow: 6, projKey: 'proj_grenade' },
-  { key: 'tower_water',  element: 'water',  buildingKey: 'building_blue',   idleRow: 0, fireRow: 3, projKey: 'proj_bullet'  },
-  { key: 'tower_ice',    element: 'ice',    buildingKey: 'building_black',  idleRow: 0, fireRow: 3, projKey: 'proj_bullet'  },
-  { key: 'tower_poison', element: 'poison', buildingKey: 'building_purple', idleRow: 0, fireRow: 3, projKey: 'proj_bullet'  },
-  { key: 'tower_shared', element: 'fire' as ElementType, buildingKey: 'building_blue', idleRow: 0, fireRow: 3, projKey: 'proj_bullet' },
+  { idleKey: 'ts_fire_idle',   attackKey: 'ts_fire_attack',   element: 'fire',   buildingKey: 'building_yellow', frameSize: 192, idleFrames: 8,  attackFrames: 4,  projKey: 'proj_grenade', unitScale: 0.28 },
+  { idleKey: 'ts_water_idle',  attackKey: 'ts_water_attack',  element: 'water',  buildingKey: 'building_blue',   frameSize: 192, idleFrames: 6,  attackFrames: 8,  projKey: 'proj_bullet',  unitScale: 0.28 },
+  { idleKey: 'ts_ice_idle',    attackKey: 'ts_ice_attack',    element: 'ice',    buildingKey: 'building_black',  frameSize: 320, idleFrames: 12, attackFrames: 3,  projKey: 'proj_bullet',  unitScale: 0.17 },
+  { idleKey: 'ts_poison_idle', attackKey: 'ts_poison_attack', element: 'poison', buildingKey: 'building_purple', frameSize: 192, idleFrames: 6,  attackFrames: 11, projKey: 'proj_bullet',  unitScale: 0.28 },
+  { idleKey: 'ts_shared_idle', attackKey: 'ts_shared_attack', element: 'fire' as ElementType, buildingKey: 'building_blue', frameSize: 192, idleFrames: 8, attackFrames: 4, projKey: 'proj_bullet', unitScale: 0.28 },
 ];
 
 export interface EnemyAssetInfo {

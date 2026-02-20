@@ -1,9 +1,9 @@
 // packages/server/src/systems/EconomySystem.ts
 import { EconomyState, TOWER_SELL_REFUND_PERCENT } from '@td/shared';
 
-const BASE_STARTING_GOLD = 100;
-const BASE_WAVE_BONUS = 20;
-const WAVE_BONUS_SCALING = 5;
+const BASE_STARTING_GOLD = 200;
+const BASE_WAVE_BONUS = 40;
+const WAVE_BONUS_SCALING = 10;
 
 export class EconomySystem {
   state: EconomyState;

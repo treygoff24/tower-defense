@@ -15,8 +15,8 @@ describe('EconomySystem', () => {
 
   it('adds starting gold scaled by player count', () => {
     economy.grantStartingGold(2);
-    // Base 100 gold * 2 players
-    expect(economy.state.gold).toBe(200);
+    // Base 200 gold * 2 players
+    expect(economy.state.gold).toBe(400);
   });
 
   it('adds kill bounty', () => {

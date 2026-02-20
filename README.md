@@ -1,6 +1,22 @@
-# Tower Defense
+# ⚔ Element Defense
 
-Multiplayer web-based tower defense game built with Phaser 3 and Socket.IO.
+Cooperative multiplayer tower defense game built with Phaser 3 and Socket.IO. Choose an element class, place towers, and survive 20 waves of robot enemies with your friends.
+
+![Lobby](docs/screenshots/01-lobby.png)
+
+## Features
+
+- **4 Element Classes** — Fire, Water, Ice, Poison — each with unique towers and passives
+- **20 Waves** — Grunts, runners, tanks, flyers, invisible enemies, and bosses
+- **Cooperative Multiplayer** — Real-time via Socket.IO, shared economy and defense
+- **Tiny Swords Art** — Medieval defenders (Warriors, Archers, Lancers, Monks) vs. sci-fi robot invaders
+- **Full Test Suite** — 80+ unit/integration tests + Playwright E2E browser tests
+
+### Screenshots
+
+| Prep Phase | Combat |
+|:---:|:---:|
+| ![Prep](docs/screenshots/04-game-prep.png) | ![Combat](docs/screenshots/06-combat.png) |
 
 ## Stack
 
@@ -9,6 +25,7 @@ Multiplayer web-based tower defense game built with Phaser 3 and Socket.IO.
 - **Shared:** Common types, configs, and map data
 - **Monorepo:** pnpm workspaces + Turborepo
 - **Testing:** Vitest (unit/integration) + Playwright (E2E browser)
+- **Art:** [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) (Free Pack) + custom robot/military sprites
 
 ## Prerequisites
 
@@ -109,12 +126,27 @@ pnpm test && pnpm test:e2e
 - **E2E tests** use Playwright to drive Chromium against the real client + server. Game state is read via `page.evaluate()` calls to `window.__gameClient.getLatestState()`. Tower placement uses the client's API rather than canvas coordinate clicks for reliability
 - **State isolation**: Integration tests create a fresh server per test. E2E tests emit a `reset_game` socket event before each test to get a clean `GameSimulation`
 
+## Game Economy
+
+| Mechanic | Value |
+|----------|-------|
+| Starting gold | 200 per player |
+| Wave bonus | 40 + 10 × wave# per player |
+| Kill bounty | 5–100g (scales with enemy type) |
+| Tower sell refund | 70% of cost |
+| Arrow Tower (cheapest) | 50g |
+
 ## Project Structure
 
 ```
 tower-defense/
 ├── packages/
 │   ├── client/          # Phaser 3 game client (Vite)
+│   │   └── src/
+│   │       ├── assets/  # Asset manifest & typed helpers
+│   │       ├── scenes/  # BootScene, LobbyScene, ClassSelectScene, GameScene, HudScene
+│   │       ├── ui/      # TowerPanel component
+│   │       └── audio/   # AudioManager
 │   ├── server/          # Express + Socket.IO game server
 │   │   └── src/
 │   │       ├── game/    # GameSimulation, GameLoop
@@ -122,11 +154,16 @@ tower-defense/
 │   │       └── integration/  # Socket.IO integration tests
 │   └── shared/          # Types, configs, map data
 ├── e2e/                 # Playwright E2E browser tests
-│   ├── helpers.ts       # Shared test utilities
-│   ├── lobby.spec.ts    # Menu/lobby tests
-│   ├── game-flow.spec.ts # Scene navigation tests
-│   └── gameplay.spec.ts # Full gameplay tests
+├── docs/screenshots/    # Game screenshots
 ├── playwright.config.ts
 ├── turbo.json
 └── package.json
 ```
+
+## Art Direction
+
+- **Defenders:** Tiny Swords medieval units — Warriors (fire), Archers (water), Lancers (ice), Monks (poison)
+- **Buildings:** Tiny Swords faction towers as tower bases, castles for spawn/base markers
+- **Terrain:** Tiny Swords tilesets with autotiled grass and dirt paths
+- **Enemies:** Robot sprites (Scarab, Spider, Hornet, Centipede, Wasp) — medieval vs. sci-fi contrast
+- **UI:** Hand-drawn graphics buttons, Tiny Swords wood table panels, decorative elements

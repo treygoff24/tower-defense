@@ -201,72 +201,53 @@ export class LobbyScene extends Phaser.Scene {
 
   private createButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
+    const btnW = 260;
+    const btnH = 54;
 
-    const useSprite = this.textures.exists('ui_btn_blue_regular') && this.textures.exists('ui_btn_blue_pressed');
+    const gfx = this.add.graphics();
+    const drawBtn = (hover: boolean, pressed: boolean) => {
+      gfx.clear();
+      // Shadow
+      gfx.fillStyle(0x000000, 0.35);
+      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 3, btnW, btnH, 10);
+      // Body
+      const bodyColor = pressed ? 0x003d1a : hover ? 0x006633 : 0x004d28;
+      gfx.fillStyle(bodyColor, 1);
+      gfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      // Top highlight
+      gfx.fillStyle(0xffffff, hover ? 0.12 : 0.06);
+      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 1, btnW - 4, btnH / 2 - 2, { tl: 8, tr: 8, bl: 0, br: 0 });
+      // Border
+      const borderColor = hover ? 0x00ff88 : 0x00cc66;
+      gfx.lineStyle(2, borderColor, hover ? 1 : 0.8);
+      gfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+    };
+    drawBtn(false, false);
 
-    if (useSprite) {
-      // Tiny Swords sprite button (320×320 source, displayed at 240×60)
-      const btnImg = this.add.image(0, 0, 'ui_btn_blue_regular');
-      btnImg.setDisplaySize(240, 60);
+    const txt = this.add.text(0, 0, label, {
+      fontSize: '20px',
+      fontFamily: '"Arial Black", Arial',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#002211',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
 
-      const txt = this.add.text(0, -3, label, {
-        fontSize: '20px',
-        fontFamily: '"Arial Black", Arial',
-        fontStyle: 'bold',
-        color: '#ffffff',
-        stroke: '#001133',
-        strokeThickness: 3,
-      }).setOrigin(0.5);
+    const hitArea = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
 
-      const hitArea = this.add.rectangle(0, 0, 240, 60, 0x000000, 0)
-        .setInteractive({ useHandCursor: true });
+    hitArea.on('pointerover', () => { drawBtn(true, false); });
+    hitArea.on('pointerout', () => { drawBtn(false, false); });
+    hitArea.on('pointerdown', () => {
+      drawBtn(true, true);
+      this.tweens.add({ targets: container, scaleX: 0.96, scaleY: 0.96, duration: 60, yoyo: true });
+    });
+    hitArea.on('pointerup', () => {
+      drawBtn(false, false);
+      onClick();
+    });
 
-      hitArea.on('pointerover', () => { btnImg.setTexture('ui_btn_blue_pressed'); });
-      hitArea.on('pointerout',  () => { btnImg.setTexture('ui_btn_blue_regular'); });
-      hitArea.on('pointerdown', () => {
-        btnImg.setTexture('ui_btn_blue_pressed');
-        this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 80, yoyo: true });
-      });
-      hitArea.on('pointerup', () => {
-        btnImg.setTexture('ui_btn_blue_regular');
-        onClick();
-      });
-
-      container.add([btnImg, txt, hitArea]);
-    } else {
-      // Fallback: drawn graphics button
-      const gfx = this.add.graphics();
-      const drawBtn = (hover: boolean) => {
-        gfx.clear();
-        gfx.fillStyle(hover ? 0x006633 : 0x004422, 1);
-        gfx.fillRoundedRect(-110, -28, 220, 56, 12);
-        gfx.lineStyle(2, hover ? 0x00ff88 : 0x008844, 1);
-        gfx.strokeRoundedRect(-110, -28, 220, 56, 12);
-      };
-      drawBtn(false);
-
-      const txt = this.add.text(0, 0, label, {
-        fontSize: '22px',
-        fontFamily: '"Arial Black", Arial',
-        fontStyle: 'bold',
-        color: '#ffffff',
-        stroke: '#002211',
-        strokeThickness: 3,
-      }).setOrigin(0.5);
-
-      const hitArea = this.add.rectangle(0, 0, 220, 56, 0x000000, 0)
-        .setInteractive({ useHandCursor: true });
-
-      hitArea.on('pointerover', () => { drawBtn(true); });
-      hitArea.on('pointerout', () => { drawBtn(false); });
-      hitArea.on('pointerdown', () => {
-        this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 80, yoyo: true });
-      });
-      hitArea.on('pointerup', () => { onClick(); });
-
-      container.add([gfx, txt, hitArea]);
-    }
-
+    container.add([gfx, txt, hitArea]);
     return container;
   }
 
