@@ -258,6 +258,7 @@ export class HudScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
 
   syncState(state: GameState): void {
+    if (!this.goldText) return;
     // Gold — pulse on change
     const newGold = state.economy.gold;
     this.hudGold = newGold;

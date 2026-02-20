@@ -229,7 +229,7 @@ export class BootScene extends Phaser.Scene {
     // Hit sparks: frameWidth=8, frameHeight=8 → check actual frame count
     this.safeCreateAnim(anims, 'fx_hit_sparks', {
       key: 'fx_hit_sparks',
-      frames: anims.generateFrameNumbers('fx_hit_sparks', { start: 0, end: 7 }),
+      frames: anims.generateFrameNumbers('fx_hit_sparks', { start: 0, end: 5 }),
       frameRate: 20, repeat: 0,
     });
 
@@ -254,7 +254,7 @@ export class BootScene extends Phaser.Scene {
     config: Phaser.Types.Animations.Animation
   ): void {
     if (!anims.exists(key)) {
-      anims.create({ key, ...config });
+      anims.create({ ...config, key });
     }
   }
 }
