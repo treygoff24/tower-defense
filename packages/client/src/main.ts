@@ -1,4 +1,9 @@
 import Phaser from 'phaser';
+import { BootScene } from './scenes/BootScene';
+import { LobbyScene } from './scenes/LobbyScene';
+import { ClassSelectScene } from './scenes/ClassSelectScene';
+import { GameScene } from './scenes/GameScene';
+import { HudScene } from './scenes/HudScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -6,7 +11,7 @@ const config: Phaser.Types.Core.GameConfig = {
   width: 1280,
   height: 720,
   backgroundColor: '#1a1a2e',
-  scene: [],
+  scene: [BootScene, LobbyScene, ClassSelectScene, GameScene, HudScene],
 };
 
 const game = new Phaser.Game(config);
