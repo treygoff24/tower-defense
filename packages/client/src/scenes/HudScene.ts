@@ -400,8 +400,8 @@ export class HudScene extends Phaser.Scene {
     const panelY = H / 2;
     this.towerPanel = new TowerPanel(this, panelX, panelY);
     this.towerPanel.getContainer().setScrollFactor(0).setDepth(101);
-    this.towerPanel.setTowerConfigs(classTowers);
     this.towerPanel.setGold(this.hudGold > 0 ? this.hudGold : 999);
+    this.towerPanel.setTowerConfigs(classTowers);
 
     // Wire up selection → GameScene event
     this.towerPanel.setSelectionCallback((configId) => {
