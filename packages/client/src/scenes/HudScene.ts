@@ -28,6 +28,7 @@ export class HudScene extends Phaser.Scene {
   private waveText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
   private hpBarFill!: Phaser.GameObjects.Graphics;
+  private hpBarBase!: Phaser.GameObjects.Image | null;
   private phaseText!: Phaser.GameObjects.Text;
   private prepTimerText!: Phaser.GameObjects.Text;
   private startWaveButton!: Phaser.GameObjects.Container;

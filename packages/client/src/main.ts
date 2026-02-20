@@ -39,5 +39,28 @@ game.events.once('ready', () => {
   console.log('Game client initialized and bound to scenes');
 });
 
+// Expose game globally for dev/debug navigation
+(window as unknown as { __game: Phaser.Game }).__game = game;
+
+// ── Debug keyboard shortcuts (dev only) ─────────────────────────────────────
+// Ctrl+1 → LobbyScene, Ctrl+2 → ClassSelectScene
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (!e.ctrlKey) return;
+  const sceneMap: Record<string, string> = {
+    '1': 'LobbyScene',
+    '2': 'ClassSelectScene',
+  };
+  const target = sceneMap[e.key];
+  if (!target) return;
+  e.preventDefault();
+  const scenes = ['BootScene', 'LobbyScene', 'ClassSelectScene', 'GameScene', 'HudScene'];
+  scenes.forEach(k => {
+    const s = game.scene.getScene(k);
+    if (s && game.scene.isActive(k) && k !== target) game.scene.stop(k);
+  });
+  if (!game.scene.isActive(target)) game.scene.start(target);
+  console.log(`[debug] Switched to ${target}`);
+});
+
 // eslint-disable-next-line no-console
 console.log('Tower Defense Client initialized', game);

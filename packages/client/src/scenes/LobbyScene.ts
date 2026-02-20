@@ -23,11 +23,11 @@ export class LobbyScene extends Phaser.Scene {
 
     // ── Title card ────────────────────────────────────────────────
     // Use Tiny Swords banner image if loaded, otherwise fallback graphics
-    // Banner.png is 704×512 — preserve aspect ratio: scale to fill a nice title panel
+    // Banner.png is 704×512 — use as a small decorative accent behind the title
     if (this.textures.exists('ui_banner')) {
-      const banner = this.add.image(W / 2, H * 0.21, 'ui_banner');
-      banner.setScale(0.5); // 352×256 — centered nicely over the title area
-      banner.setAlpha(0.80);
+      const banner = this.add.image(W / 2, H * 0.19, 'ui_banner');
+      banner.setDisplaySize(320, 90); // small accent — does not dominate
+      banner.setAlpha(0.55);
     } else {
       const panelG = this.add.graphics();
       panelG.fillStyle(0x0d1a30, 0.9);
@@ -71,13 +71,6 @@ export class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── Element badges ────────────────────────────────────────────
-    // Ribbon decoration above badges
-    if (this.textures.exists('ui_ribbon_big')) {
-      const ribbon = this.add.image(W / 2, H * 0.33, 'ui_ribbon_big');
-      ribbon.setDisplaySize(480, 48);
-      ribbon.setAlpha(0.85);
-    }
-
     const elements = [
       { icon: '🔥', name: 'Fire',   color: '#ff6644' },
       { icon: '💧', name: 'Water',  color: '#44aaff' },

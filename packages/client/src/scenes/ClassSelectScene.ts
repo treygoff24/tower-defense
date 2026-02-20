@@ -89,9 +89,9 @@ export class ClassSelectScene extends Phaser.Scene {
     // ── Title section ─────────────────────────────────────────────
     // Banner.png is 704×512 — preserve aspect ratio, use as title backdrop
     if (this.textures.exists('ui_banner')) {
-      const titleBanner = this.add.image(W / 2, 90, 'ui_banner');
-      titleBanner.setScale(0.45); // 316×230 — covers the title area nicely
-      titleBanner.setAlpha(0.75).setDepth(1);
+      const titleBanner = this.add.image(W / 2, 55, 'ui_banner');
+      titleBanner.setDisplaySize(420, 88); // small accent behind title text
+      titleBanner.setAlpha(0.55).setDepth(1);
     } else {
       const titleBg = this.add.graphics();
       titleBg.fillStyle(0x0a0a20, 0.85);
