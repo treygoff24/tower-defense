@@ -87,18 +87,24 @@ export class ClassSelectScene extends Phaser.Scene {
     vignette.setDepth(0);
 
     // ── Title section ─────────────────────────────────────────────
-    const titleBg = this.add.graphics();
-    titleBg.fillStyle(0x0a0a20, 0.85);
-    titleBg.fillRoundedRect(W / 2 - 300, 16, 600, 80, 12);
-    titleBg.lineStyle(1, 0x4444aa, 0.8);
-    titleBg.strokeRoundedRect(W / 2 - 300, 16, 600, 80, 12);
-    titleBg.setDepth(1);
+    if (this.textures.exists('ui_banner')) {
+      const titleBanner = this.add.image(W / 2, 58, 'ui_banner');
+      titleBanner.setDisplaySize(660, 110);
+      titleBanner.setAlpha(0.88).setDepth(1);
+    } else {
+      const titleBg = this.add.graphics();
+      titleBg.fillStyle(0x0a0a20, 0.85);
+      titleBg.fillRoundedRect(W / 2 - 300, 16, 600, 80, 12);
+      titleBg.lineStyle(1, 0x4444aa, 0.8);
+      titleBg.strokeRoundedRect(W / 2 - 300, 16, 600, 80, 12);
+      titleBg.setDepth(1);
+    }
 
     const titleGlow = this.add.text(W / 2, 42, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
       fontSize: '34px',
       fontFamily: '"Arial Black", Arial',
-      color: '#221100',
-    }).setOrigin(0.5).setAlpha(0.5).setDepth(1);
+      color: '#110800',
+    }).setOrigin(0.5).setAlpha(0.45).setDepth(1);
 
     const title = this.add.text(W / 2, 40, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
       fontSize: '34px',
@@ -125,6 +131,13 @@ export class ClassSelectScene extends Phaser.Scene {
       fontStyle: 'italic',
       color: '#6677aa',
     }).setOrigin(0.5).setDepth(2);
+
+    // Ribbon decoration below title
+    if (this.textures.exists('ui_ribbon_small')) {
+      const ribbon = this.add.image(W / 2, 105, 'ui_ribbon_small');
+      ribbon.setDisplaySize(500, 28);
+      ribbon.setAlpha(0.7).setDepth(2);
+    }
 
     // ── Class cards ───────────────────────────────────────────────
     const cardWidth = 210;
@@ -277,13 +290,13 @@ export class ClassSelectScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     // ── Passive label ─────────────────────────────────────────────
-    const passiveY = descY + (description.height) + 8;
+    const passiveY = descY + description.height + 8;
     const passivePillBg = this.add.graphics();
     passivePillBg.fillStyle(0x222244, 1);
     passivePillBg.lineStyle(1, classData.color, 0.4);
     passivePillBg.fillRoundedRect(-width / 2 + 12, passiveY - 2, width - 24, 20, 5);
     passivePillBg.strokeRoundedRect(-width / 2 + 12, passiveY - 2, width - 24, 20, 5);
-    this.add.text(-width / 2 + 20, passiveY + 1, `PASSIVE: ${classData.passive}`, {
+    const passiveText = this.add.text(-width / 2 + 20, passiveY + 1, `PASSIVE: ${classData.passive}`, {
       fontSize: '10px',
       fontFamily: 'Arial',
       color: '#' + classData.color.toString(16).padStart(6, '0'),
@@ -295,20 +308,20 @@ export class ClassSelectScene extends Phaser.Scene {
     towerDivider.lineStyle(1, 0x333355, 1);
     towerDivider.lineBetween(-width / 2 + 10, towerSectionY - 4, width / 2 - 10, towerSectionY - 4);
 
-    this.add.text(0, towerSectionY, 'TOWERS', {
+    const towersLabel = this.add.text(0, towerSectionY, 'TOWERS', {
       fontSize: '10px',
       fontFamily: 'Arial',
       color: '#555577',
       fontStyle: 'bold',
     }).setOrigin(0.5, 0);
 
-    classData.towers.forEach((tower, ti) => {
-      this.add.text(0, towerSectionY + 14 + ti * 16, `• ${tower}`, {
+    const towerTexts = classData.towers.map((tower, ti) =>
+      this.add.text(0, towerSectionY + 14 + ti * 16, `\u2022 ${tower}`, {
         fontSize: '11px',
         fontFamily: 'Arial',
         color: '#' + classData.color.toString(16).padStart(6, '0'),
-      }).setOrigin(0.5, 0).setAlpha(0.9);
-    });
+      }).setOrigin(0.5, 0).setAlpha(0.9)
+    );
 
     // ── Selection overlay ─────────────────────────────────────────
     const selectedOverlay = this.add.rectangle(0, 0, width, height, classData.color, 0.15);
@@ -318,22 +331,22 @@ export class ClassSelectScene extends Phaser.Scene {
     const glowBorder = this.add.graphics();
     glowBorder.setVisible(false);
 
-    container.add([
+    // ── Add all children to container ─────────────────────────────
+    const children: Phaser.GameObjects.GameObject[] = [
       bg, viewBg,
-      buildingObj, soldierSprite,
+      buildingObj,
       badgeBg, badgeText,
       divider,
       name,
       pillBg, elementLabel,
       description,
-      passivePillBg,
-      towerDivider,
+      passivePillBg, passiveText,
+      towerDivider, towersLabel,
+      ...towerTexts,
       selectedOverlay, glowBorder,
-    ]);
-    // Add text objects that were created directly on scene (need to add to container)
-    // Note: texts created with this.add.text are already in scene; we need to reparent
-    // Re-create them as container-owned objects:
-    // (Already done inline above — Phaser containers reference scene objects by position)
+    ];
+    if (soldierSprite) children.splice(3, 0, soldierSprite);
+    container.add(children);
 
     // ── Interactivity ─────────────────────────────────────────────
     bg.on('pointerover', () => {
@@ -460,80 +473,132 @@ export class ClassSelectScene extends Phaser.Scene {
 
   private createReadyButton(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y).setDepth(10);
-    const btnW = 200;
-    const btnH = 52;
+    const btnW = 220;
+    const btnH = 56;
 
-    const bg = this.add.graphics();
-    bg.fillStyle(0x223344, 1);
-    bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-    bg.lineStyle(2, 0x334455, 1);
-    bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-    this.readyBg = bg;
+    const useSprite = this.textures.exists('ui_btn_blue_regular') && this.textures.exists('ui_btn_blue_pressed');
 
-    this.readyText = this.add.text(0, 0, 'SELECT A CLASS', {
-      fontSize: '19px',
-      fontFamily: '"Arial Black", Arial',
-      fontStyle: 'bold',
-      color: '#445566',
-      stroke: '#000000',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
+    if (useSprite) {
+      // Tiny Swords sprite button — disabled/greyed out until class is selected
+      const btnImg = this.add.image(0, 0, 'ui_btn_blue_regular');
+      btnImg.setDisplaySize(btnW, btnH);
+      btnImg.setAlpha(0.45);
+      btnImg.setTint(0x556677);
+      (container as unknown as { btnImg: Phaser.GameObjects.Image }).btnImg = btnImg;
 
-    // Hit area (disabled initially)
-    const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
-      .setInteractive({ useHandCursor: false });
-    (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
-    (container as unknown as { background: Phaser.GameObjects.Graphics }).background = bg;
+      this.readyText = this.add.text(0, -2, 'SELECT A CLASS', {
+        fontSize: '17px',
+        fontFamily: '"Arial Black", Arial',
+        fontStyle: 'bold',
+        color: '#8899aa',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5);
 
-    hit.on('pointerover', () => {
-      if (!this.selectedClass) return;
-      bg.clear();
-      bg.fillStyle(0x00aa66, 1);
-      bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      bg.lineStyle(2, 0x00ff88, 1);
-      bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-    });
+      const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
+        .setInteractive({ useHandCursor: false });
+      (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
 
-    hit.on('pointerout', () => {
-      if (!this.selectedClass) return;
-      bg.clear();
-      bg.fillStyle(0x008855, 1);
-      bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-      bg.lineStyle(2, 0x00cc77, 1);
-      bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-    });
-
-    hit.on('pointerdown', () => {
-      if (!this.selectedClass) return;
-      bg.clear();
-      bg.fillStyle(0x006644, 1);
-      bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-    });
-
-    hit.on('pointerup', () => {
-      if (this.selectedClass) {
+      hit.on('pointerover', () => {
+        if (!this.selectedClass) return;
+        btnImg.setTexture('ui_btn_blue_pressed');
+      });
+      hit.on('pointerout', () => {
+        if (!this.selectedClass) return;
+        btnImg.setTexture('ui_btn_blue_regular');
+      });
+      hit.on('pointerdown', () => {
+        if (!this.selectedClass) return;
+        btnImg.setTexture('ui_btn_blue_pressed');
         this.tweens.add({ targets: container, scaleX: 0.93, scaleY: 0.93, duration: 80, yoyo: true });
-        this.emitReadyUp();
-      }
-    });
+      });
+      hit.on('pointerup', () => {
+        if (this.selectedClass) {
+          btnImg.setTexture('ui_btn_blue_regular');
+          this.emitReadyUp();
+        }
+      });
 
-    container.add([bg, this.readyText, hit]);
+      container.add([btnImg, this.readyText, hit]);
+    } else {
+      // Fallback: drawn graphics button
+      const bg = this.add.graphics();
+      bg.fillStyle(0x223344, 1);
+      bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      bg.lineStyle(2, 0x334455, 1);
+      bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      this.readyBg = bg;
+
+      this.readyText = this.add.text(0, 0, 'SELECT A CLASS', {
+        fontSize: '19px',
+        fontFamily: '"Arial Black", Arial',
+        fontStyle: 'bold',
+        color: '#445566',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5);
+
+      const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
+        .setInteractive({ useHandCursor: false });
+      (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
+      (container as unknown as { background: Phaser.GameObjects.Graphics }).background = bg;
+
+      hit.on('pointerover', () => {
+        if (!this.selectedClass) return;
+        bg.clear();
+        bg.fillStyle(0x00aa66, 1);
+        bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+        bg.lineStyle(2, 0x00ff88, 1);
+        bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      });
+      hit.on('pointerout', () => {
+        if (!this.selectedClass) return;
+        bg.clear();
+        bg.fillStyle(0x008855, 1);
+        bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+        bg.lineStyle(2, 0x00cc77, 1);
+        bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      });
+      hit.on('pointerdown', () => {
+        if (!this.selectedClass) return;
+        bg.clear();
+        bg.fillStyle(0x006644, 1);
+        bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      });
+      hit.on('pointerup', () => {
+        if (this.selectedClass) {
+          this.tweens.add({ targets: container, scaleX: 0.93, scaleY: 0.93, duration: 80, yoyo: true });
+          this.emitReadyUp();
+        }
+      });
+
+      container.add([bg, this.readyText, hit]);
+    }
+
     return container;
   }
 
   private enableReadyButton(): void {
     const hit = (this.readyButton as unknown as { hit: Phaser.GameObjects.Rectangle }).hit;
-    const btnW = 200; const btnH = 52;
     hit.setInteractive({ useHandCursor: true });
 
     this.readyText.setText('⚔  READY  ⚔');
     this.readyText.setColor('#ffffff');
 
-    this.readyBg.clear();
-    this.readyBg.fillStyle(0x008855, 1);
-    this.readyBg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
-    this.readyBg.lineStyle(2, 0x00cc77, 1);
-    this.readyBg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+    const btnImg = (this.readyButton as unknown as { btnImg?: Phaser.GameObjects.Image }).btnImg;
+    if (btnImg) {
+      // Sprite mode — remove grey tint, full alpha
+      btnImg.clearTint();
+      btnImg.setAlpha(1);
+    } else {
+      // Graphics mode
+      const btnW = 220; const btnH = 56;
+      this.readyBg.clear();
+      this.readyBg.fillStyle(0x008855, 1);
+      this.readyBg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      this.readyBg.lineStyle(2, 0x00cc77, 1);
+      this.readyBg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+    }
 
     // Pulse to draw attention
     this.tweens.add({

@@ -63,7 +63,9 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'spritesheet', key: 'proj_rpg',     path: 'assets/Projectiles/RPG-round.png',       frameWidth: 16, frameHeight: 16 },
 
   // ── Terrain tiles ───────────────────────────────────────────────────
-  { kind: 'image', key: 'tileset_color1', path: 'assets/Tiny Swords (Free Pack)/Terrain/Tileset/Tilemap_color1.png' },
+  { kind: 'image',       key: 'tileset_color1',    path: 'assets/Tiny Swords (Free Pack)/Terrain/Tileset/Tilemap_color1.png' },
+  { kind: 'spritesheet', key: 'tileset_color1_ss', path: 'assets/Tiny Swords (Free Pack)/Terrain/Tileset/Tilemap_color1.png', frameWidth: 64, frameHeight: 64 },
+  { kind: 'spritesheet', key: 'tileset_color2_ss', path: 'assets/Tiny Swords (Free Pack)/Terrain/Tileset/Tilemap_color2.png', frameWidth: 64, frameHeight: 64 },
 
   // ── UI Elements ─────────────────────────────────────────────────────
   { kind: 'image', key: 'ui_bar_base', path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Bars/SmallBar_Base.png' },

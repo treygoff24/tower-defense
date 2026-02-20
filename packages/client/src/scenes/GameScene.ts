@@ -55,6 +55,7 @@ export class GameScene extends Phaser.Scene {
   private projectiles: LiveProjectile[] = [];
 
   // ── Map graphics ──────────────────────────────────────────────────
+  private tileLayer!: Phaser.GameObjects.Group;        // tileset ground sprites
   private terrainLayer!: Phaser.GameObjects.Graphics;
   private decorationLayer!: Phaser.GameObjects.Group;
   private cloudLayer!: Phaser.GameObjects.Group;
@@ -84,6 +85,7 @@ export class GameScene extends Phaser.Scene {
     this.audio.bind(this);
 
     // Layering objects
+    this.tileLayer = this.add.group();
     this.decorationLayer = this.add.group();
     this.cloudLayer = this.add.group();
     this.terrainLayer = this.add.graphics().setDepth(TERRAIN_DEPTH);
@@ -174,6 +176,30 @@ export class GameScene extends Phaser.Scene {
     this.waypoints = waypoints;
     this.buildZones = buildZones;
     this.terrainLayer.clear();
+
+    // ── Tile layer (tileset sprites beneath graphics) ─────────────
+    this.tileLayer.clear(true, true);
+    const hasTileset = this.textures.exists('tileset_color1_ss');
+    if (hasTileset) {
+      // Tiny Swords Tilemap_color1: 576×384 → 9 cols × 6 rows at 64px each
+      // Frame layout: row 0 = base grass (solid green center ≈ frame 4)
+      //               row 2 = dirt/earth variants
+      // We scatter a few grass frame variants for a textured look.
+      const grassFrames = [4, 4, 4, 4, 3, 5]; // weight toward center tile
+      for (let ty = 0; ty < this.mapHeight; ty++) {
+        for (let tx = 0; tx < this.mapWidth; tx++) {
+          const frame = grassFrames[(tx * 3 + ty * 7) % grassFrames.length];
+          const tile = this.add.image(
+            tx * TILE_SIZE + TILE_SIZE / 2,
+            ty * TILE_SIZE + TILE_SIZE / 2,
+            'tileset_color1_ss',
+            frame
+          );
+          tile.setDepth(TERRAIN_DEPTH - 1);
+          this.tileLayer.add(tile);
+        }
+      }
+    }
 
     const g = this.terrainLayer;
 
