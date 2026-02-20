@@ -43,12 +43,13 @@ game.events.once('ready', () => {
 (window as unknown as { __game: Phaser.Game }).__game = game;
 
 // ── Debug keyboard shortcuts (dev only) ─────────────────────────────────────
-// Ctrl+1 → LobbyScene, Ctrl+2 → ClassSelectScene
+// Ctrl+1 → LobbyScene, Ctrl+2 → ClassSelectScene, Ctrl+3 → GameScene
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (!e.ctrlKey) return;
   const sceneMap: Record<string, string> = {
     '1': 'LobbyScene',
     '2': 'ClassSelectScene',
+    '3': 'GameScene',
   };
   const target = sceneMap[e.key];
   if (!target) return;
