@@ -148,28 +148,45 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
 
   private setupDemoMap(): void {
+    // 16×10 map — winding S-curve path from left to right
     this.waypoints = [
-      { x: 0, y: 2 },
-      { x: 3, y: 2 },
-      { x: 3, y: 5 },
-      { x: 7, y: 5 },
-      { x: 7, y: 3 },
-      { x: 10, y: 3 },
+      { x: 0,  y: 2 },   // enemy spawn (left edge)
+      { x: 4,  y: 2 },   // turn south
+      { x: 4,  y: 7 },   // turn east
+      { x: 10, y: 7 },   // turn north
+      { x: 10, y: 1 },   // turn east
+      { x: 15, y: 1 },   // player base (right edge)
     ];
 
     this.buildZones = [
-      { x: 1, y: 1, width: 2, height: 1 },
-      { x: 4, y: 4, width: 2, height: 2 },
-      { x: 6, y: 4, width: 1, height: 2 },
-      { x: 8, y: 2, width: 1, height: 1 },
-      { x: 2, y: 3, width: 1, height: 1 },
+      { x: 1,  y: 0, width: 2, height: 2 },  // top-left cluster
+      { x: 1,  y: 3, width: 2, height: 3 },  // left mid
+      { x: 5,  y: 0, width: 2, height: 1 },  // top mid-left
+      { x: 5,  y: 4, width: 2, height: 2 },  // central left
+      { x: 7,  y: 4, width: 2, height: 2 },  // central right
+      { x: 7,  y: 0, width: 2, height: 1 },  // top mid
+      { x: 11, y: 3, width: 2, height: 3 },  // right mid
+      { x: 13, y: 3, width: 1, height: 2 },  // right inner
+      { x: 11, y: 0, width: 3, height: 1 },  // top-right
     ];
 
-    this.mapWidth = 12;
-    this.mapHeight = 8;
+    this.mapWidth = 16;
+    this.mapHeight = 10;
 
     this.renderMap(this.waypoints, this.buildZones);
     this.spawnDecorations();
+
+    // Zoom camera to fill the viewport and center on the map
+    const camW = this.cameras.main.width;
+    const camH = this.cameras.main.height;
+    const zoomX = camW / (this.mapWidth * TILE_SIZE);
+    const zoomY = camH / (this.mapHeight * TILE_SIZE);
+    const zoom = Math.min(zoomX, zoomY) * 0.95;
+    this.cameras.main.setZoom(zoom);
+    this.cameras.main.centerOn(
+      (this.mapWidth * TILE_SIZE) / 2,
+      (this.mapHeight * TILE_SIZE) / 2
+    );
   }
 
   renderMap(waypoints: Vec2[], buildZones: BuildZone[]): void {
@@ -237,26 +254,49 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // ── Start marker ──────────────────────────────────────────────
+    // ── Start marker — enemy spawn portal ────────────────────────
     if (waypoints.length > 0) {
       const sp = waypoints[0];
       const sx = sp.x * TILE_SIZE + TILE_SIZE / 2;
       const sy = sp.y * TILE_SIZE + TILE_SIZE / 2;
-      g.fillStyle(0xff4444, 0.8);
-      g.fillCircle(sx, sy, 10);
-      g.lineStyle(3, 0xff0000, 1);
-      g.strokeCircle(sx, sy, 14);
+      // Pulsing glow
+      g.fillStyle(0xff0000, 0.18);
+      g.fillCircle(sx, sy, TILE_SIZE * 0.6);
+      // Red arrow pointing right (direction enemies travel)
+      g.fillStyle(0xdd2222, 0.9);
+      g.fillTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
+      g.lineStyle(2, 0xff6666, 0.9);
+      g.strokeTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
     }
 
-    // ── End marker ────────────────────────────────────────────────
+    // ── End marker — player castle ────────────────────────────────
     if (waypoints.length > 1) {
       const ep = waypoints[waypoints.length - 1];
       const ex = ep.x * TILE_SIZE + TILE_SIZE / 2;
       const ey = ep.y * TILE_SIZE + TILE_SIZE / 2;
-      g.fillStyle(0x4444ff, 0.8);
-      g.fillCircle(ex, ey, 10);
-      g.lineStyle(3, 0x2222ff, 1);
-      g.strokeCircle(ex, ey, 14);
+      // Glow ring
+      g.fillStyle(0x2244ff, 0.2);
+      g.fillCircle(ex, ey, TILE_SIZE * 0.7);
+      g.lineStyle(3, 0x4466ff, 0.9);
+      g.strokeCircle(ex, ey, TILE_SIZE * 0.48);
+      // Castle tower silhouette (keep-style)
+      const tw = 22; const th = 20; const bx = ex - tw / 2; const by = ey - th / 2;
+      g.fillStyle(0x4466ff, 0.85);
+      g.fillRect(bx, by, tw, th);
+      // Merlons across the top
+      for (let m = 0; m < 3; m++) {
+        g.fillRect(bx + m * 8, by - 7, 6, 8);
+      }
+      // Arrow slit
+      g.fillStyle(0x0a0a30, 1);
+      g.fillRect(ex - 2, by + 4, 4, 8);
+      // Overlay building sprite for extra detail
+      if (this.textures.exists('building_blue')) {
+        const castle = this.add.image(ex, ey, 'building_blue');
+        castle.setScale(0.26);
+        castle.setDepth(TERRAIN_DEPTH + 2);
+        castle.setTint(0xaaccff);
+      }
     }
   }
 
@@ -274,12 +314,13 @@ export class GameScene extends Phaser.Scene {
     this.decorationLayer.clear(true, true);
 
     // Spritesheet-based assets with frame counts (pick random frame to vary appearance)
+    // Tree frames: 256×256px → scale 0.17 ≈ 43px (~0.67 tiles). Rocks are single images.
     const decoAssets: Array<{ key: string; frames: number; scale: number; isSprite: boolean }> = [
-      { key: 'deco_tree1', frames: 6,  scale: 0.065, isSprite: true  }, // 256×256 frames
-      { key: 'deco_tree2', frames: 6,  scale: 0.065, isSprite: true  },
-      { key: 'deco_bush1', frames: 8,  scale: 0.12,  isSprite: true  }, // 128×128 frames
-      { key: 'deco_rock1', frames: 1,  scale: 0.55,  isSprite: false },
-      { key: 'deco_rock2', frames: 1,  scale: 0.55,  isSprite: false },
+      { key: 'deco_tree1', frames: 6,  scale: 0.17,  isSprite: true  }, // 256×256 frames
+      { key: 'deco_tree2', frames: 6,  scale: 0.17,  isSprite: true  },
+      { key: 'deco_bush1', frames: 8,  scale: 0.22,  isSprite: true  }, // 128×128 frames
+      { key: 'deco_rock1', frames: 1,  scale: 0.45,  isSprite: false },
+      { key: 'deco_rock2', frames: 1,  scale: 0.45,  isSprite: false },
     ];
 
     // Weighted selection: more rocks/bushes at edges, more trees inland

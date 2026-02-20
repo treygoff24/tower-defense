@@ -67,8 +67,10 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     // Wait for scene to initialize, then fire mock state
     setTimeout(() => {
       const gameScene = game.scene.getScene('GameScene') as Phaser.Scene;
+      const hudScene = game.scene.getScene('HudScene') as HudScene;
       if (gameScene && gameScene.events) {
         // Minimal valid GameState for visual testing
+        // Include a connected player with a class so TowerPanel shows towers
         const mockState = {
           phase: 'prep' as const,
           wave: 1,
@@ -76,14 +78,26 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
           baseHp: 100,
           maxBaseHp: 100,
           economy: { gold: 150, lumber: 0 },
-          players: {},
+          players: {
+            'debug-player': {
+              id: 'debug-player',
+              name: 'Debug',
+              elementClass: 'fire' as const,
+              connected: true,
+              ready: true,
+            },
+          },
           towers: {},
           enemies: {},
           prepTimeRemaining: 30,
           tick: 0,
         };
         gameScene.events.emit('sync-state', mockState);
-        console.log('[debug] GameScene started with mock state (Ctrl+3)');
+        // Sync HudScene too so TowerPanel and class icon appear
+        if (hudScene) {
+          hudScene.syncState(mockState);
+        }
+        console.log('[debug] GameScene + HudScene started with mock state (Ctrl+3)');
       }
     }, 100);
     return;

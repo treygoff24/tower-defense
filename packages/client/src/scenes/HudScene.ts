@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import type { GameState, GamePhase, ElementType } from '@td/shared';
+import { TOWER_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
+import { TowerPanel } from '../ui/TowerPanel';
 
 const ELEMENT_COLORS: Record<ElementType, number> = {
   fire:   0xff4400,
@@ -37,6 +39,8 @@ export class HudScene extends Phaser.Scene {
   private playerElement: ElementType | null = null;
   private prevBaseHp = -1;
   private enemyCountText!: Phaser.GameObjects.Text;
+  private towerPanel: TowerPanel | null = null;
+  private hudGold = 0;
 
   constructor() {
     super({ key: 'HudScene' });
@@ -256,10 +260,12 @@ export class HudScene extends Phaser.Scene {
   syncState(state: GameState): void {
     // Gold — pulse on change
     const newGold = state.economy.gold;
+    this.hudGold = newGold;
     if (this.goldText.text !== `Gold: ${newGold}`) {
       this.goldText.setText(`Gold: ${newGold}`);
       this.tweens.add({ targets: this.goldText, scaleX: 1.2, scaleY: 1.2, yoyo: true, duration: 150 });
     }
+    this.towerPanel?.setGold(newGold);
 
     // Wave
     this.waveText.setText(state.wave === 0 ? 'Wave: Ready' : `Wave ${state.wave} / ${state.maxWaves}`);
@@ -366,7 +372,43 @@ export class HudScene extends Phaser.Scene {
         duration: 500,
         ease: 'Power2.Out',
       });
+
+      // ── Show tower panel for this class ──────────────────────
+      this.showTowerPanelForClass(this.playerElement);
     }
+  }
+
+  private showTowerPanelForClass(elementClass: ElementType): void {
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
+
+    // Destroy existing panel before creating new one
+    this.towerPanel?.destroy();
+    this.towerPanel = null;
+
+    // Filter towers to player's element + shared towers
+    const allTowers = Object.values(TOWER_CONFIGS);
+    const classTowers = allTowers.filter(
+      (t) => t.class === elementClass || t.class === 'shared'
+    );
+
+    if (classTowers.length === 0) return;
+
+    // Position: right sidebar, vertically centered
+    const panelX = W - 95;  // 180px wide panel, centered 95px from right
+    const panelY = H / 2;
+    this.towerPanel = new TowerPanel(this, panelX, panelY);
+    this.towerPanel.getContainer().setScrollFactor(0).setDepth(101);
+    this.towerPanel.setTowerConfigs(classTowers);
+    this.towerPanel.setGold(this.hudGold > 0 ? this.hudGold : 999);
+
+    // Wire up selection → GameScene event
+    this.towerPanel.setSelectionCallback((configId) => {
+      const gameScene = this.scene.get('GameScene');
+      if (gameScene) {
+        gameScene.events.emit('tower-selected', configId);
+      }
+    });
   }
 
   private showGameOverOverlay(phase: 'victory' | 'defeat'): void {
