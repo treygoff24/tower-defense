@@ -395,7 +395,7 @@ export class HudScene extends Phaser.Scene {
     if (classTowers.length === 0) return;
 
     // Position: right sidebar, vertically centered
-    const panelX = W - 95;  // 180px wide panel, centered 95px from right
+    const panelX = W - 110;  // 210px wide panel, centered 110px from right
     const panelY = H / 2;
     this.towerPanel = new TowerPanel(this, panelX, panelY);
     this.towerPanel.getContainer().setScrollFactor(0).setDepth(101);

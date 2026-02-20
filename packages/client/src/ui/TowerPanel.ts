@@ -17,7 +17,7 @@ export class TowerPanel {
   private currentGold = 0;
 
   private towerItemContainers: Phaser.GameObjects.Container[] = [];
-  private panelWidth = 180;
+  private panelWidth = 220;
   private itemHeight = 70;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -53,7 +53,7 @@ export class TowerPanel {
     // Create new items
     let yOffset = -140;
 
-    configs.forEach((config, index) => {
+    configs.forEach((config, _index) => {
       const canAfford = config.costGold <= this.currentGold;
       const itemContainer = this.createTowerItem(config, canAfford, yOffset);
       this.towerItemContainers.push(itemContainer);
@@ -114,12 +114,12 @@ export class TowerPanel {
 
     // ── Building thumbnail ────────────────────────────────────────
     const buildingKey = elementBuildingKeys[config.class] ?? 'building_blue';
-    const thumbSize = 38;
+    const thumbSize = 36;
     const thumbX = -itemWidth / 2 + thumbSize / 2 + 4;
     let thumb: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
     if (this.scene.textures.exists(buildingKey)) {
       thumb = this.scene.add.image(thumbX, 0, buildingKey);
-      (thumb as Phaser.GameObjects.Image).setScale(0.13);
+      (thumb as Phaser.GameObjects.Image).setScale(0.12);
       (thumb as Phaser.GameObjects.Image).setAlpha(alpha);
     } else {
       thumb = this.scene.add.rectangle(thumbX, 0, thumbSize, thumbSize - 10, elementColor, alpha * 0.5);
@@ -130,26 +130,32 @@ export class TowerPanel {
     let soldierThumb: Phaser.GameObjects.Sprite | null = null;
     if (this.scene.textures.exists(soldierKey)) {
       soldierThumb = this.scene.add.sprite(thumbX - 2, -4, soldierKey, 0);
-      soldierThumb.setScale(2.5);
+      soldierThumb.setScale(2.4);
       soldierThumb.setAlpha(alpha);
     }
 
     // ── Tower name ────────────────────────────────────────────────
+    // Text starts just after the thumbnail area; fixed width to prevent overflow
+    const textX = thumbX + thumbSize / 2 + 6;                // left-anchored after thumb
+    const dotReserve = 18;                                    // space for element dot + gap
+    const textMaxWidth = itemWidth / 2 - textX - dotReserve; // px available before dot
+
     const nameColor = canAfford ? '#ffffff' : '#555566';
-    const name = this.scene.add.text(thumbSize / 2 - 6, -14, config.name, {
-      fontSize: '14px',
+    const displayName = this.truncateName(config.name, textMaxWidth, 12);
+    const name = this.scene.add.text(textX, -14, displayName, {
+      fontSize: '12px',
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: nameColor,
-    });
+    }).setOrigin(0, 0.5);
 
     // ── Cost ──────────────────────────────────────────────────────
     const costColor = canAfford ? '#ffd700' : '#664444';
-    const cost = this.scene.add.text(thumbSize / 2 - 6, 4, `💰 ${config.costGold}g`, {
-      fontSize: '12px',
+    const cost = this.scene.add.text(textX, 6, `💰 ${config.costGold}g`, {
+      fontSize: '11px',
       fontFamily: 'Arial',
       color: costColor,
-    });
+    }).setOrigin(0, 0.5);
 
     // ── Element dot (right edge) ──────────────────────────────────
     const dot = this.scene.add.circle(itemWidth / 2 - 10, 0, 5, elementColor, alpha);
@@ -179,6 +185,22 @@ export class TowerPanel {
     (container as unknown as { configId: string }).configId = config.id;
 
     return container;
+  }
+
+  /**
+   * Truncate a tower name to fit within maxWidth pixels at the given font size.
+   * Uses a rough char-width estimate; Phaser measures text on canvas but we avoid
+   * the overhead of creating a temp Text just for measurement.
+   */
+  private truncateName(name: string, maxWidth: number, fontSize: number): string {
+    // Bold Arial Black averages ~0.68× font size per char
+    const charWidth = fontSize * 0.68;
+    const ellipsis = '…';
+    const ellipsisWidth = charWidth;
+    if (name.length * charWidth <= maxWidth) return name;
+
+    const maxChars = Math.floor((maxWidth - ellipsisWidth) / charWidth);
+    return name.slice(0, Math.max(maxChars, 1)) + ellipsis;
   }
 
   private selectTower(configId: string, _container: Phaser.GameObjects.Container): void {
