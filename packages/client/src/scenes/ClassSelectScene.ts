@@ -210,24 +210,24 @@ export class ClassSelectScene extends Phaser.Scene {
     const viewH = 150;
     const viewBg = this.add.rectangle(0, -height / 2 + viewH / 2, width, viewH, 0x0a0a1a);
 
-    // ── Building image ────────────────────────────────────────────
-    const buildingY = -height / 2 + viewH - 20;
+    // ── Building image (top-center of view area, behind soldier) ─
+    const buildingY = -height / 2 + viewH / 2;   // center of view area (y≈-105)
     let buildingObj: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
     if (this.textures.exists(classData.buildingKey)) {
       buildingObj = this.add.image(0, buildingY, classData.buildingKey);
-      (buildingObj as Phaser.GameObjects.Image).setScale(0.26);
-      (buildingObj as Phaser.GameObjects.Image).setOrigin(0.5, 0.85);
+      (buildingObj as Phaser.GameObjects.Image).setScale(0.28);
+      (buildingObj as Phaser.GameObjects.Image).setOrigin(0.5, 0.5);
       // Subtle tint from element color
       (buildingObj as Phaser.GameObjects.Image).setTint(
         Phaser.Display.Color.IntegerToColor(classData.color)
           .lighten(80).color
       );
     } else {
-      buildingObj = this.add.rectangle(0, buildingY - 30, 60, 80, classData.color, 0.4);
+      buildingObj = this.add.rectangle(0, buildingY, 60, 80, classData.color, 0.4);
     }
 
-    // ── Soldier sprite (on top of building, frame 0 = idle row) ──
-    const soldierY = -height / 2 + viewH - 60;
+    // ── Soldier sprite (in front of building, lower in view) ─────
+    const soldierY = -height / 2 + viewH - 40;   // below building (y≈-70)
     let soldierSprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null = null;
     if (this.textures.exists(classData.soldierKey)) {
       soldierSprite = this.add.sprite(-4, soldierY, classData.soldierKey, 0);

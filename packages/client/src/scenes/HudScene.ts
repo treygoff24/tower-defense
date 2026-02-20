@@ -29,6 +29,7 @@ export class HudScene extends Phaser.Scene {
   private hpText!: Phaser.GameObjects.Text;
   private hpBarFill!: Phaser.GameObjects.Graphics;
   private hpBarBase!: Phaser.GameObjects.Image | null;
+  private hpBarFillImg?: Phaser.GameObjects.Image;
   private phaseText!: Phaser.GameObjects.Text;
   private prepTimerText!: Phaser.GameObjects.Text;
   private startWaveButton!: Phaser.GameObjects.Container;
@@ -84,6 +85,16 @@ export class HudScene extends Phaser.Scene {
 
     // HP bar (just below top bar)
     this.hpBarFill = this.add.graphics().setScrollFactor(0).setDepth(101);
+
+    // Tiny Swords bar sprites (if available) — override Graphics fallback
+    if (this.textures.exists('ui_big_bar_base')) {
+      this.hpBarFill.setVisible(false);
+      const barLeft = W - hpPanelW - 14;
+      this.hpBarBase = this.add.image(barLeft, 54, 'ui_big_bar_base')
+        .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16).setScrollFactor(0).setDepth(101);
+      this.hpBarFillImg = this.add.image(barLeft, 54, 'ui_big_bar_fill')
+        .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16).setScrollFactor(0).setDepth(101);
+    }
 
     // ── Enemy count (below wave text) ─────────────────────────────
     this.enemyCountText = this.add.text(W / 2, 52, '', {
@@ -154,7 +165,7 @@ export class HudScene extends Phaser.Scene {
       fontSize: '28px',
     }).setOrigin(0.5);
 
-    const nameText = this.add.text(0, 44, 'Choose Class', {
+    const nameText = this.add.text(0, 44, 'Towers', {
       fontSize: '11px',
       fontFamily: 'Arial',
       color: '#aaaaaa',
@@ -266,12 +277,18 @@ export class HudScene extends Phaser.Scene {
     // HP bar
     const W = this.cameras.main.width;
     const panelW = 210;
-    this.hpBarFill.clear();
-    this.hpBarFill.fillStyle(0x000000, 0.5);
-    this.hpBarFill.fillRect(W - panelW - 14, 52, panelW, 6);
     const fillColor = hpRatio > 0.6 ? 0x44ff44 : hpRatio > 0.3 ? 0xffee22 : 0xff3333;
-    this.hpBarFill.fillStyle(fillColor, 1);
-    this.hpBarFill.fillRect(W - panelW - 14, 52, panelW * hpRatio, 6);
+    if (this.hpBarFillImg) {
+      // Tiny Swords sprite bar — scale fill width proportionally from left
+      this.hpBarFillImg.setDisplaySize(Math.max(panelW * hpRatio, 2), 16);
+      this.hpBarFillImg.setTint(fillColor);
+    } else {
+      this.hpBarFill.clear();
+      this.hpBarFill.fillStyle(0x000000, 0.5);
+      this.hpBarFill.fillRect(W - panelW - 14, 52, panelW, 6);
+      this.hpBarFill.fillStyle(fillColor, 1);
+      this.hpBarFill.fillRect(W - panelW - 14, 52, panelW * hpRatio, 6);
+    }
 
     // Base damage shake
     if (this.prevBaseHp !== -1 && state.baseHp < this.prevBaseHp) {

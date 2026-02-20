@@ -311,8 +311,8 @@ export class LobbyScene extends Phaser.Scene {
         key
       );
       cloud.setAlpha(0.08 + Math.random() * 0.07);
-      cloud.setScale(0.5 + Math.random() * 0.4);
-      cloud.setDepth(-1);
+      cloud.setScale(0.25 + Math.random() * 0.2);
+      cloud.setDepth(1);
       const speed = 12 + Math.random() * 18;
       this.tweens.add({
         targets: cloud,
