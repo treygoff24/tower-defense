@@ -613,13 +613,13 @@ export class ClassSelectScene extends Phaser.Scene {
     });
   }
 
-  private emitReadyUp(): void {
+  private async emitReadyUp(): Promise<void> {
     if (!this.selectedClass) return;
 
     const gameClient = this.registry.get('gameClient') as GameClient;
     if (gameClient) {
-      gameClient.selectClass(this.selectedClass);
-      gameClient.readyUp();
+      await gameClient.selectClass(this.selectedClass);
+      await gameClient.readyUp();
     }
 
     this.cameras.main.fadeOut(400, 0, 0, 0);
@@ -632,6 +632,7 @@ export class ClassSelectScene extends Phaser.Scene {
     const gameClient = this.registry.get('gameClient') as GameClient;
     if (!gameClient) {
       this.scene.start('GameScene');
+      this.scene.start('HudScene');
       return;
     }
 
@@ -642,6 +643,7 @@ export class ClassSelectScene extends Phaser.Scene {
         if (state && (state.phase === 'prep' || state.phase === 'combat')) {
           checkInterval.remove();
           this.scene.start('GameScene');
+          this.scene.start('HudScene');
         }
       },
       loop: true,

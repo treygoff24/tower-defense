@@ -406,8 +406,12 @@ export class HudScene extends Phaser.Scene {
     // Wire up selection → GameScene event
     this.towerPanel.setSelectionCallback((configId) => {
       const gameScene = this.scene.get('GameScene');
+      const gameClient = this.registry.get('gameClient') as GameClient;
       if (gameScene) {
         gameScene.events.emit('tower-selected', configId);
+      }
+      if (gameClient) {
+        gameClient.selectTower(configId);
       }
     });
   }

@@ -32,9 +32,10 @@ export class GameClient {
     this.gameScene = gameScene;
     this.hudScene = hudScene;
 
-    gameScene.events.on('tile-clicked', async (data: { tileX: number; tileY: number }) => {
-      if (this.selectedTowerId) {
-        const result = await this.network.placeTower(this.selectedTowerId, data.tileX, data.tileY);
+    gameScene.events.on('tile-clicked', async (data: { tileX: number; tileY: number; configId?: string }) => {
+      const configId = data.configId ?? this.selectedTowerId;
+      if (configId) {
+        const result = await this.network.placeTower(configId, data.tileX, data.tileY);
         if (!result.ok) {
           console.warn('Placement rejected:', result.reason);
         }

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone } from '@td/shared';
-import { TILE_SIZE } from '@td/shared';
+import { TILE_SIZE, MAP_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { ENEMY_ASSETS, TOWER_ASSETS } from '../assets/manifest';
 import { AudioManager } from '../audio/AudioManager';
@@ -148,30 +148,13 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
 
   private setupDemoMap(): void {
-    // 16×10 map — winding S-curve path from left to right
-    this.waypoints = [
-      { x: 0,  y: 2 },   // enemy spawn (left edge)
-      { x: 4,  y: 2 },   // turn south
-      { x: 4,  y: 7 },   // turn east
-      { x: 10, y: 7 },   // turn north
-      { x: 10, y: 1 },   // turn east
-      { x: 15, y: 1 },   // player base (right edge)
-    ];
-
-    this.buildZones = [
-      { x: 1,  y: 0, width: 2, height: 2 },  // top-left cluster
-      { x: 1,  y: 3, width: 2, height: 3 },  // left mid
-      { x: 5,  y: 0, width: 2, height: 1 },  // top mid-left
-      { x: 5,  y: 4, width: 2, height: 2 },  // central left
-      { x: 7,  y: 4, width: 2, height: 2 },  // central right
-      { x: 7,  y: 0, width: 2, height: 1 },  // top mid
-      { x: 11, y: 3, width: 2, height: 3 },  // right mid
-      { x: 13, y: 3, width: 1, height: 2 },  // right inner
-      { x: 11, y: 0, width: 3, height: 1 },  // top-right
-    ];
-
-    this.mapWidth = 16;
-    this.mapHeight = 10;
+    const map = MAP_CONFIGS['map_01'];
+    if (!map) throw new Error('Map map_01 not found in MAP_CONFIGS');
+    
+    this.waypoints = map.waypoints;
+    this.buildZones = map.buildZones;
+    this.mapWidth = map.width;
+    this.mapHeight = map.height;
 
     this.renderMap(this.waypoints, this.buildZones);
     this.spawnDecorations();
@@ -704,14 +687,18 @@ export class GameScene extends Phaser.Scene {
     const walkAnim = `enemy_${enemy.type}_walk`;
     const idleAnim = `enemy_${enemy.type}_idle`;
 
+    // Convert tile coords to pixel coords
+    const px = enemy.x * TILE_SIZE + TILE_SIZE / 2;
+    const py = enemy.y * TILE_SIZE + TILE_SIZE / 2;
+
     // Shadow
-    const shadow = this.add.ellipse(enemy.x, enemy.y + 6, 18, 6, 0x000000, 0.4);
+    const shadow = this.add.ellipse(px, py + 6, 18, 6, 0x000000, 0.4);
     shadow.setDepth(SHADOW_DEPTH);
 
     // Sprite
-    const sprite = this.add.sprite(enemy.x, enemy.y, key);
+    const sprite = this.add.sprite(px, py, key);
     sprite.setScale(scale);
-    sprite.setDepth(ENTITY_DEPTH + enemy.y * 0.001);
+    sprite.setDepth(ENTITY_DEPTH + py * 0.001);
 
     // Pick walk or idle animation
     if (this.anims.exists(walkAnim)) {
@@ -751,23 +738,26 @@ export class GameScene extends Phaser.Scene {
 
   private updateEnemyVisual(ev: EnemyVisual, enemy: EnemyState): void {
     const { sprite, hpBar, shadow } = ev;
+    const px = enemy.x * TILE_SIZE + TILE_SIZE / 2;
+    const py = enemy.y * TILE_SIZE + TILE_SIZE / 2;
 
-    // Move
-    sprite.setPosition(enemy.x, enemy.y);
-    shadow.setPosition(enemy.x, enemy.y + 6);
+    // Flip to face direction of movement (compare old pixel pos before updating)
+    const oldX = sprite.x;
+    sprite.setPosition(px, py);
+    if (px !== oldX) {
+      sprite.setFlipX(px < oldX);
+    }
+
+    // Move shadow
+    shadow.setPosition(px, py + 6);
 
     // Depth sort (Y)
-    const depth = ENTITY_DEPTH + enemy.y * 0.001;
+    const depth = ENTITY_DEPTH + py * 0.001;
     sprite.setDepth(depth);
-
-    // Flip to face direction of movement
-    if (sprite.x !== enemy.x) {
-      sprite.setFlipX(enemy.x < sprite.x);
-    }
 
     // HP bar
     const hpRatio = enemy.hp / ev.maxHp;
-    this.drawHpBar(hpBar, enemy.x, enemy.y - 14 * (sprite.scale / 2), hpRatio);
+    this.drawHpBar(hpBar, px, py - 14 * (sprite.scale / 2), hpRatio);
 
     // Hit flash on damage
     if (enemy.hp < ev.lastHp) {
@@ -776,7 +766,7 @@ export class GameScene extends Phaser.Scene {
       // Tiny knockback wiggle
       this.tweens.add({
         targets: sprite,
-        x: enemy.x + (Math.random() - 0.5) * 8,
+        x: px + (Math.random() - 0.5) * 8,
         duration: 60,
         yoyo: true,
       });
