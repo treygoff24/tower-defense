@@ -47,7 +47,7 @@ A multiplayer web-based co-op PvE tower defense game inspired by Burbenog TD. Pl
 ### Design Philosophy
 
 - Each class has a **primary identity** (damage type, CC type, role)
-- Everyone can build **shared basic towers** (arrow, barricade, etc.)
+- Everyone can build **shared basic towers** (arrow, amplifier, etc.)
 - Each class has **3-4 unique specialty towers** only they can build
 - **Class passive modifier**: basic towers placed by a player inherit their elemental flavor
 - No class is pure support — every class has at least 1-2 real damage towers
@@ -78,7 +78,7 @@ This is a critical design distinction:
 #### Shared Basic Towers (all classes)
 Accessible to every player. Class passive modifiers make them feel different depending on who placed them.
 - Arrow Tower — single-target ranged
-- Barricade — no damage, blocks/redirects (if applicable to fixed path variants)
+- Amplifier Tower — no damage, buffs all towers in radius (+15% damage); useful on fixed paths where blocking makes no sense
 - Ballista — slow, high single-target damage
 - Scout Tower — reveals invisible enemies in radius
 
@@ -276,7 +276,8 @@ Heroes are **purchased safety nets with active abilities**, not required to win.
 ### Hero Mechanics
 
 - Each player can purchase one Hero aligned to their elemental class (costs lumber)
-- Heroes auto-attack enemies on the path (positioned at a fixed point, not freely mobile)
+- Heroes auto-attack enemies on the path; during prep phase, the hero can be repositioned to any valid path position — they lock in place once combat begins
+  - *Strategic note: repositioning each prep phase is intended and encouraged — moving your hero to the toughest upcoming choke point is a core decision*
 - 2-3 active abilities per hero on cooldowns (player-activated, not auto-cast)
 - Heroes level 1-5 during the session (gains HP, damage, ability potency)
 - Hero levels reset between sessions (no persistent hero progression)
@@ -330,6 +331,12 @@ boss_HP = base_boss_HP * (1 + 0.5 * (player_count - 1))
 - **Trio (3 players):** designed sweet spot. 3 of 4 elements covered, one gap creates strategic tension.
 - **Full squad (4 players):** all elements covered. Maximum synergy, maximum enemy threat.
 - **5-6 players:** duplicate classes allowed. Additional enemy types and mechanics introduced (not just HP bloat). Split-on-death enemies, multi-path spawns, tower-disabling enemies.
+
+  **Duplicate class rules (when two players share the same class):**
+  - Passive modifiers do NOT stack — a basic tower can only have one elemental passive applied regardless of which player placed it (first-placer's passive applies)
+  - Both players can independently build that class's specialty towers
+  - If two burn DoTs from two Fire players hit the same enemy simultaneously, only the stronger one applies (no double-dipping on the same status type)
+  - Both players share the same specialty tower build pool — having two Fire players doesn't make Fire specialty towers twice as available, it just means two people can build them
 
 ### Late-Join Support
 
@@ -603,6 +610,7 @@ Minimum viable version to validate the core loop:
 - 5-6 player support
 - Proximity bonuses + chain triggers
 - Tower transfer mechanic
+- Telemetry & analytics instrumentation (see Telemetry section below)
 
 ### v0.3 Additions
 - Meta-progression (account XP, class skill trees)
@@ -650,6 +658,12 @@ These targets define what "well-balanced" looks like. Used during playtesting to
 ---
 
 ## Telemetry & Analytics
+
+> **Deferred to v0.2** — Telemetry & analytics deferred to v0.2 — build a fun game loop first, then instrument it.
+
+---
+
+*(Full telemetry spec below — implement during v0.2 after the core loop is validated and playable.)*
 
 ### What to Track
 

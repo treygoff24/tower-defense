@@ -19,20 +19,20 @@
 ### Phase 1: Project Scaffolding & Shared Types (Tasks 1-3)
 Foundation: monorepo, tooling, shared type definitions.
 
-### Phase 2: Server Core — Game Loop & Economy (Tasks 4-7)
-Authoritative server: tick loop, rooms, economy, wave scheduling.
+### Phase 2: Server Core — Game Loop & Economy (Tasks 4-7) + Data (Tasks 22-24)
+Authoritative server: tick loop, rooms, economy, wave scheduling. Data tasks start here since they only depend on Task 3.
 
-### Phase 3: Server Core — Towers, Enemies, Combat (Tasks 8-12)
-Tower placement, enemy pathing, targeting, damage, elemental reactions.
+### Phase 3: Server Core — Towers, Enemies, Combat (Tasks 8-12b)
+Tower placement, enemy pathing, targeting, damage, elemental reactions. Task 12 is split into 12a (phase management) and 12b (combat tick).
 
 ### Phase 4: Client Core — Rendering & Input (Tasks 13-17)
 Phaser scenes, map rendering, tower placement UI, enemy rendering.
 
-### Phase 5: Networking — Client-Server Integration (Tasks 18-21)
-Socket.IO connection, command/snapshot protocol, interpolation.
+### Phase 5: Networking — Client-Server Integration (Tasks 18, 18b, 19-21)
+Socket.IO connection, command/snapshot protocol, interpolation, reconnection.
 
-### Phase 6: Game Content — Data & Balancing (Tasks 22-25)
-Tower configs, wave configs, class configs, map data.
+### Phase 6: Game Content — Data & Balancing (Tasks 22-24)
+Tower configs, wave configs, map data. ~~Task 25 eliminated~~ (no stub re-wiring needed).
 
 ### Phase 7: Audio, Polish & Lobby (Tasks 26-29)
 Sound system, lobby/class selection, HUD, prep/combat phase flow.
@@ -67,6 +67,7 @@ End-to-end testing, multiplayer testing, balance pass.
   "private": true,
   "scripts": {
     "dev": "turbo dev",
+    "dev:all": "concurrently \"pnpm --filter @td/server dev\" \"pnpm --filter @td/client dev\"",
     "build": "turbo build",
     "test": "turbo test",
     "lint": "turbo lint",
@@ -80,10 +81,14 @@ End-to-end testing, multiplayer testing, balance pass.
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "prettier": "^3.4.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "concurrently": "^9.0.0"
   }
 }
 ```
+
+> **Dev note:** Use `pnpm dev:all` to start both the server (port 3001) and client (port 3000) simultaneously for local development. `pnpm dev` uses Turbo's task graph and is preferred for CI/build pipelines.
+
 
 **Step 2: Create pnpm-workspace.yaml**
 
@@ -574,6 +579,7 @@ export type ClientCommand =
   | { type: 'upgrade_tower'; instanceId: string }
   | { type: 'sell_tower'; instanceId: string }
   | { type: 'start_wave' }
+  | { type: 'reconnect'; playerId: string } // Task 18b: reconnection after disconnect
   | { type: 'chat'; message: string };
 
 // Server -> Client events
@@ -1355,7 +1361,7 @@ git commit -m "feat: add wave scheduler with player-count HP scaling"
 
 ---
 
-## Phase 3: Server Core — Towers, Enemies, Combat
+## Phase 3: Server Core — Towers, Enemies, Combat (Tasks 8-12b)
 
 ### Task 8: Tower Placement System
 
@@ -1483,7 +1489,8 @@ Expected: FAIL
 import type { TowerConfig, TowerState, MapConfig } from '@td/shared';
 import { TOWER_SELL_REFUND_PERCENT } from '@td/shared';
 
-let nextTowerId = 1;
+// NOTE: nextTowerId is intentionally an instance-level counter (not module-level)
+// to prevent state leaking between test runs in Vitest.
 
 interface PlaceResult {
   ok: boolean;
@@ -1510,6 +1517,7 @@ export class TowerSystem {
   private towers: Map<string, TowerState> = new Map();
   private occupiedTiles: Set<string> = new Set();
   private towerInvestment: Map<string, number> = new Map();
+  private nextTowerId = 1; // instance-level to avoid cross-test contamination
 
   constructor(configs: Record<string, TowerConfig>, map: MapConfig) {
     this.configs = configs;
@@ -1538,7 +1546,7 @@ export class TowerSystem {
       return { ok: false, reason: 'Tile is occupied' };
     }
 
-    const instanceId = `tower_${nextTowerId++}`;
+    const instanceId = `tower_${this.nextTowerId++}`;
     const tower: TowerState = {
       instanceId,
       configId,
@@ -1726,12 +1734,14 @@ Expected: FAIL
 // packages/server/src/systems/EnemySystem.ts
 import type { Vec2, EnemyState, EnemyType, EnemyStatus } from '@td/shared';
 
-let nextEnemyId = 1;
+// NOTE: nextEnemyId is intentionally an instance-level counter (not module-level)
+// to prevent state leaking between test runs in Vitest.
 
 export class EnemySystem {
   private waypoints: Vec2[];
   private enemies: Map<string, EnemyState> = new Map();
   private leakedEnemies: EnemyState[] = [];
+  private nextEnemyId = 1; // instance-level to avoid cross-test contamination
 
   constructor(waypoints: Vec2[]) {
     this.waypoints = waypoints;
@@ -1739,7 +1749,7 @@ export class EnemySystem {
 
   spawnEnemy(type: EnemyType, hp: number, speed: number, armor: number, tags: string[]): EnemyState {
     const spawn = this.waypoints[0];
-    const instanceId = `enemy_${nextEnemyId++}`;
+    const instanceId = `enemy_${this.nextEnemyId++}`;
     const enemy: EnemyState = {
       instanceId,
       type,
@@ -2386,26 +2396,28 @@ git commit -m "feat: add elemental reaction system with 4 core reactions"
 
 ---
 
-### Task 12: Game Simulation Orchestrator
+### Task 12a: Game Simulation — Phase Management
 
 **Parallel:** no
-**Blocked by:** Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11
+**Blocked by:** Task 5, Task 6, Task 7, Task 22, Task 23, Task 24
 **Owned files:** `packages/server/src/game/GameSimulation.ts`, `packages/server/src/game/GameSimulation.test.ts`
 
 **Files:**
 - Create: `packages/server/src/game/GameSimulation.ts`
 - Create: `packages/server/src/game/GameSimulation.test.ts`
 
-This is the integration point that wires all server systems together for the per-tick game simulation.
+This is the integration hub for the server simulation. Task 12a covers the orchestrator class with phase management; combat tick wiring is in Task 12b.
 
-**Step 1: Write failing tests**
+> **Data imports:** GameSimulation imports directly from `@td/shared/data/*` (Tasks 22-24). No `defaults.ts` stub file — real data is available from Phase 2 onwards when Tasks 22-24 are done.
+
+**Step 1: Write failing tests (phase management)**
 
 ```typescript
 // packages/server/src/game/GameSimulation.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GameSimulation } from './GameSimulation';
 
-describe('GameSimulation', () => {
+describe('GameSimulation — Phase Management', () => {
   let sim: GameSimulation;
 
   beforeEach(() => {
@@ -2418,7 +2430,7 @@ describe('GameSimulation', () => {
     expect(sim.state.phase).toBe('lobby');
   });
 
-  it('transitions to prep phase when all players ready', () => {
+  it('transitions to prep phase when game starts', () => {
     sim.readyUp('p1');
     sim.startGame();
     expect(sim.state.phase).toBe('prep');
@@ -2428,6 +2440,22 @@ describe('GameSimulation', () => {
     sim.readyUp('p1');
     sim.startGame();
     expect(sim.state.economy.gold).toBeGreaterThan(0);
+  });
+
+  it('counts down prep timer during prep phase', () => {
+    sim.readyUp('p1');
+    sim.startGame();
+    const initialTime = sim.state.prepTimeRemaining;
+    sim.tick(5.0);
+    expect(sim.state.prepTimeRemaining).toBeCloseTo(initialTime - 5.0, 1);
+  });
+
+  it('auto-starts wave when prep timer expires', () => {
+    sim.readyUp('p1');
+    sim.startGame();
+    // Exhaust prep timer
+    sim.tick(31.0);
+    expect(sim.state.phase).toBe('combat');
   });
 
   it('allows tower placement during prep phase', () => {
@@ -2440,30 +2468,17 @@ describe('GameSimulation', () => {
   it('rejects tower placement if cannot afford', () => {
     sim.readyUp('p1');
     sim.startGame();
-    // Drain gold
-    while (sim.state.economy.gold >= 50) {
-      sim.placeTower('p1', 'arrow_tower', Math.floor(Math.random() * 5) + 3, 4);
-    }
+    // Force-spend all gold
+    (sim as any).economy.state.gold = 0;
     const result = sim.placeTower('p1', 'arrow_tower', 7, 10);
     expect(result.ok).toBe(false);
   });
 
-  it('transitions to combat when wave starts', () => {
+  it('transitions to combat when wave starts explicitly', () => {
     sim.readyUp('p1');
     sim.startGame();
     sim.startWave();
     expect(sim.state.phase).toBe('combat');
-  });
-
-  it('applies base damage when enemies leak', () => {
-    sim.readyUp('p1');
-    sim.startGame();
-    sim.startWave();
-    // Simulate many ticks so enemies traverse the whole path
-    for (let i = 0; i < 2000; i++) {
-      sim.tick(0.05);
-    }
-    expect(sim.state.baseHp).toBeLessThan(sim.state.maxBaseHp);
   });
 });
 ```
@@ -2473,15 +2488,7 @@ describe('GameSimulation', () => {
 Run: `cd packages/server && pnpm test -- --run src/game/GameSimulation.test.ts`
 Expected: FAIL
 
-**Step 3: Implement GameSimulation**
-
-This class is the integration hub. It composes all the systems from Tasks 4-11. The implementation should:
-
-- Hold instances of `GameRoom`, `EconomySystem`, `WaveScheduler`, `TowerSystem`, `EnemySystem`, `CombatSystem`, `ReactionSystem`
-- Expose `tick(dt)` method called by `GameLoop`
-- During combat tick: move enemies, process tower attacks, check reactions, apply damage, detect leaks, check wave completion
-- During prep tick: count down prep timer
-- Handle phase transitions: prep -> combat -> post_wave -> prep (loop) or victory/defeat
+**Step 3: Implement GameSimulation (phase management only)**
 
 ```typescript
 // packages/server/src/game/GameSimulation.ts
@@ -2492,14 +2499,13 @@ import { TowerSystem } from '../systems/TowerSystem';
 import { EnemySystem } from '../systems/EnemySystem';
 import { CombatSystem } from '../systems/CombatSystem';
 import { ReactionSystem } from '../systems/ReactionSystem';
-import type {
-  GameState, GamePhase, ElementType, TowerState,
-  WaveConfig, TowerConfig, MapConfig, ReactionConfig, Vec2,
-} from '@td/shared';
-import { PREP_PHASE_DURATION_SEC, TICK_RATE } from '@td/shared';
-
-// Default configs — will be loaded from data files in Phase 6
-import { getDefaultMap, getDefaultTowerConfigs, getDefaultWaveConfigs, getDefaultReactionConfigs } from '../data/defaults';
+import type { GameState, ElementType, TowerState, WaveConfig, TowerConfig, MapConfig, ReactionConfig } from '@td/shared';
+import { PREP_PHASE_DURATION_SEC } from '@td/shared';
+// Import real data — no stubs, Tasks 22-24 supply these
+import { TOWER_CONFIGS } from '@td/shared/data/towers';
+import { WAVE_CONFIGS } from '@td/shared/data/waves';
+import { MAP_CONFIGS } from '@td/shared/data/maps';
+import { REACTION_CONFIGS } from '@td/shared/data/reactions';
 
 interface CommandResult {
   ok: boolean;
@@ -2517,7 +2523,7 @@ export class GameSimulation {
   private reactionSystem: ReactionSystem;
   private map: MapConfig;
   private spawnQueue: { spawnAtSec: number; enemyType: string; hp: number; speed: number; armor: number; tags: string[] }[] = [];
-  private waveElapsedSec: number = 0;
+  private waveElapsedSec = 0;
 
   private constructor(
     room: GameRoom,
@@ -2538,13 +2544,8 @@ export class GameSimulation {
 
   static create(roomId: string): GameSimulation {
     const room = new GameRoom(roomId);
-    return new GameSimulation(
-      room,
-      getDefaultMap(),
-      getDefaultTowerConfigs(),
-      getDefaultWaveConfigs(),
-      getDefaultReactionConfigs(),
-    );
+    const map = MAP_CONFIGS['map_01']!;
+    return new GameSimulation(room, map, TOWER_CONFIGS, WAVE_CONFIGS, REACTION_CONFIGS);
   }
 
   get state(): GameState {
@@ -2560,6 +2561,10 @@ export class GameSimulation {
   removePlayer(id: string) { this.room.removePlayer(id); }
   selectClass(id: string, cls: ElementType) { return this.room.selectClass(id, cls); }
   readyUp(id: string) { return this.room.readyUp(id); }
+  markPlayerConnected(id: string, connected: boolean) {
+    const player = this.room.state.players[id];
+    if (player) player.connected = connected;
+  }
 
   startGame(): void {
     this.economy.grantStartingGold(this.room.playerCount);
@@ -2569,21 +2574,12 @@ export class GameSimulation {
   }
 
   placeTower(playerId: string, configId: string, x: number, y: number): CommandResult {
-    // Check cost — look up from tower configs
-    const cost = this.getCostForTower(configId);
-    if (cost === null) return { ok: false, reason: 'Unknown tower' };
-    if (!this.economy.canAfford(cost)) return { ok: false, reason: 'Not enough gold' };
-
+    const config = TOWER_CONFIGS[configId];
+    if (!config) return { ok: false, reason: 'Unknown tower' };
+    if (!this.economy.canAfford(config.costGold)) return { ok: false, reason: 'Not enough gold' };
     const result = this.towerSystem.placeTower(configId, x, y, playerId);
-    if (result.ok) {
-      this.economy.spendGold(cost);
-    }
+    if (result.ok) this.economy.spendGold(config.costGold);
     return result;
-  }
-
-  private getCostForTower(configId: string): number | null {
-    const configs = getDefaultTowerConfigs();
-    return configs[configId]?.costGold ?? null;
   }
 
   startWave(): void {
@@ -2597,7 +2593,6 @@ export class GameSimulation {
 
   tick(dt: number): void {
     const phase = this.room.state.phase;
-
     if (phase === 'prep') {
       this.room.state.prepTimeRemaining -= dt;
       if (this.room.state.prepTimeRemaining <= 0) {
@@ -2606,210 +2601,182 @@ export class GameSimulation {
     } else if (phase === 'combat') {
       this.tickCombat(dt);
     }
-
     this.room.state.tick++;
   }
 
-  private tickCombat(dt: number): void {
-    this.waveElapsedSec += dt;
-
-    // Spawn enemies from queue
-    while (this.spawnQueue.length > 0 && this.spawnQueue[0].spawnAtSec <= this.waveElapsedSec) {
-      const spawn = this.spawnQueue.shift()!;
-      this.enemySystem.spawnEnemy(
-        spawn.enemyType as any,
-        spawn.hp,
-        spawn.speed,
-        spawn.armor,
-        spawn.tags,
-      );
-    }
-
-    // Move enemies
-    this.enemySystem.update(dt);
-
-    // Process tower attacks
-    const enemies = this.enemySystem.getAliveEnemies();
-    const towers = this.towerSystem.getAllTowers();
-
-    for (const tower of towers) {
-      const attack = this.combatSystem.processAttack(tower, enemies, this.room.state.tick);
-      if (!attack) continue;
-
-      // Apply damage to primary target
-      this.enemySystem.damageEnemy(attack.targetId, attack.damage);
-
-      // Apply on-hit effects (elemental statuses)
-      for (const effect of attack.onHitEffects) {
-        if (effect.element) {
-          this.enemySystem.applyStatus(attack.targetId, {
-            element: effect.element,
-            type: this.elementToStatusType(effect.element),
-            stacks: 1,
-            remainingSec: effect.durationSec ?? 5,
-          });
-        }
-      }
-
-      // Check for reactions on primary target
-      const enemy = this.enemySystem.getEnemy(attack.targetId);
-      if (enemy && enemy.alive && attack.onHitEffects.length > 0) {
-        const triggerElement = attack.onHitEffects[0].element;
-        if (triggerElement) {
-          this.reactionSystem.checkReaction(enemy, triggerElement, attack.damage);
-        }
-      }
-
-      // Apply splash damage
-      for (const splashId of attack.splashTargetIds) {
-        this.enemySystem.damageEnemy(splashId, Math.floor(attack.damage * 0.5));
-      }
-    }
-
-    // Handle leaked enemies
-    const leaked = this.enemySystem.getLeakedEnemies();
-    for (const _enemy of leaked) {
-      this.room.state.baseHp -= 1;
-    }
-
-    // Check defeat
-    if (this.room.state.baseHp <= 0) {
-      this.room.state.baseHp = 0;
-      this.room.state.phase = 'defeat';
-      return;
-    }
-
-    // Check wave complete
-    if (
-      this.spawnQueue.length === 0 &&
-      this.enemySystem.aliveCount === 0
-    ) {
-      const waveConfig = this.waveScheduler.getCurrentWaveConfig();
-      if (waveConfig) {
-        this.economy.addWaveBonus(this.waveScheduler.currentWave, this.room.playerCount);
-      }
-
-      if (!this.waveScheduler.hasMoreWaves()) {
-        this.room.state.phase = 'victory';
-      } else {
-        this.room.state.phase = 'prep';
-        this.room.state.prepTimeRemaining = PREP_PHASE_DURATION_SEC;
-      }
-    }
-  }
-
-  private elementToStatusType(element: ElementType): string {
-    switch (element) {
-      case 'fire': return 'burning';
-      case 'water': return 'soaked';
-      case 'ice': return 'cold';
-      case 'poison': return 'toxin';
-    }
-  }
+  // tickCombat implemented in Task 12b — stub here for compilation
+  protected tickCombat(_dt: number): void { /* Task 12b */ }
 }
 ```
 
-**Step 4: Create default data stubs for compilation**
-
-Create `packages/server/src/data/defaults.ts` with minimal stub data so the simulation can compile and tests pass. Full data populating happens in Phase 6 (Tasks 22-25).
-
-```typescript
-// packages/server/src/data/defaults.ts
-import type { MapConfig, TowerConfig, WaveConfig, ReactionConfig } from '@td/shared';
-
-export function getDefaultMap(): MapConfig {
-  return {
-    id: 'map_01',
-    name: 'Forest Path',
-    width: 20,
-    height: 15,
-    tileSize: 64,
-    waypoints: [
-      { x: 0, y: 7 }, { x: 5, y: 7 }, { x: 10, y: 3 },
-      { x: 15, y: 3 }, { x: 15, y: 7 }, { x: 19, y: 7 },
-    ],
-    buildZones: [
-      { x: 2, y: 4, width: 6, height: 2 },
-      { x: 2, y: 9, width: 6, height: 2 },
-      { x: 11, y: 0, width: 3, height: 2 },
-      { x: 11, y: 5, width: 3, height: 2 },
-      { x: 16, y: 4, width: 3, height: 2 },
-      { x: 16, y: 9, width: 3, height: 2 },
-    ],
-    playerZones: [
-      { id: 0, minPlayers: 1, buildZones: [0, 1] },
-      { id: 1, minPlayers: 2, buildZones: [2, 3] },
-      { id: 2, minPlayers: 3, buildZones: [4, 5] },
-    ],
-  };
-}
-
-export function getDefaultTowerConfigs(): Record<string, TowerConfig> {
-  return {
-    arrow_tower: {
-      id: 'arrow_tower', name: 'Arrow Tower', class: 'shared', category: 'basic',
-      roles: ['damage'], costGold: 50, range: 3, attackPeriodSec: 1.0,
-      baseDamage: 10, targets: 'ground',
-      upgrades: [
-        { tier: 2, costGold: 40, deltas: { baseDamage: '+5' } },
-        { tier: 3, costGold: 80, deltas: { baseDamage: '+10' } },
-      ],
-    },
-    // Minimal stubs — full configs in Task 22
-  };
-}
-
-export function getDefaultWaveConfigs(): WaveConfig[] {
-  return [
-    {
-      wave: 1,
-      groups: [{ enemyType: 'grunt', count: 6, hp: 50, speed: 1, armor: 0, tags: ['ground'], spawnIntervalSec: 0.5 }],
-      bountyGold: 5, telegraph: 'Grunts approaching!',
-    },
-    {
-      wave: 2,
-      groups: [{ enemyType: 'grunt', count: 8, hp: 60, speed: 1, armor: 0, tags: ['ground'], spawnIntervalSec: 0.4 }],
-      bountyGold: 5, telegraph: 'More grunts!',
-    },
-  ];
-}
-
-export function getDefaultReactionConfigs(): ReactionConfig[] {
-  return [
-    {
-      id: 'vaporize', triggerElement: 'fire', requiredStatus: 'soaked',
-      effect: { type: 'damage_multiplier', value: 1.5 }, consumesStatus: true,
-      sound: 'sfx_vaporize', vfx: 'vfx_steam_burst',
-    },
-    {
-      id: 'freeze', triggerElement: 'ice', requiredStatus: 'soaked',
-      effect: { type: 'apply_status', value: 0, durationSec: 3 }, consumesStatus: true,
-      sound: 'sfx_freeze', vfx: 'vfx_freeze',
-    },
-    {
-      id: 'melt', triggerElement: 'fire', requiredStatus: 'frozen',
-      effect: { type: 'damage_multiplier', value: 2.0 }, consumesStatus: true,
-      sound: 'sfx_melt', vfx: 'vfx_melt',
-    },
-    {
-      id: 'conflagration', triggerElement: 'fire', requiredStatus: 'toxin',
-      effect: { type: 'aoe_burst', value: 50, aoeRadius: 2.0 }, consumesStatus: true,
-      sound: 'sfx_conflagration', vfx: 'vfx_conflagration',
-    },
-  ];
-}
-```
-
-**Step 5: Run tests to verify they pass**
+**Step 4: Run tests to verify they pass**
 
 Run: `cd packages/server && pnpm test -- --run src/game/GameSimulation.test.ts`
-Expected: all tests PASS
+Expected: phase management tests PASS
 
-**Step 6: Commit**
+**Step 5: Commit**
 
 ```bash
-git add packages/server/src/game/GameSimulation.ts packages/server/src/game/GameSimulation.test.ts packages/server/src/data/defaults.ts
-git commit -m "feat: add game simulation orchestrator wiring all server systems"
+git add packages/server/src/game/GameSimulation.ts packages/server/src/game/GameSimulation.test.ts
+git commit -m "feat: add game simulation phase management (12a)"
+```
+
+---
+
+### Task 12b: Game Simulation — Combat Tick Integration
+
+**Parallel:** no
+**Blocked by:** Task 12a, Task 8, Task 9, Task 10, Task 11
+**Owned files:** `packages/server/src/game/GameSimulation.ts` (extend), `packages/server/src/game/GameSimulation.combat.test.ts`
+
+**Files:**
+- Modify: `packages/server/src/game/GameSimulation.ts` (implement `tickCombat`)
+- Create: `packages/server/src/game/GameSimulation.combat.test.ts`
+
+**Step 1: Write failing combat tests**
+
+```typescript
+// packages/server/src/game/GameSimulation.combat.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { GameSimulation } from './GameSimulation';
+
+describe('GameSimulation — Combat Tick Integration', () => {
+  let sim: GameSimulation;
+
+  beforeEach(() => {
+    sim = GameSimulation.create('test-room');
+    sim.addPlayer('p1', 'Trey');
+    sim.selectClass('p1', 'fire');
+    sim.readyUp('p1');
+    sim.startGame();
+  });
+
+  it('enemies take damage from towers during combat', () => {
+    // Place a tower in range of where enemies will be
+    sim.placeTower('p1', 'arrow_tower', 3, 7);
+    sim.startWave();
+    // Tick enough for enemies to appear and get hit
+    for (let i = 0; i < 200; i++) sim.tick(0.05);
+    const enemies = Object.values(sim.state.enemies);
+    const damagedEnemies = enemies.filter((e) => e.hp < e.maxHp);
+    expect(damagedEnemies.length).toBeGreaterThan(0);
+  });
+
+  it('leaked enemies damage the base', () => {
+    sim.startWave();
+    // Let all enemies traverse the full path unimpeded
+    for (let i = 0; i < 2000; i++) sim.tick(0.05);
+    expect(sim.state.baseHp).toBeLessThan(sim.state.maxBaseHp);
+  });
+
+  it('wave completion transitions phase to prep (or victory)', () => {
+    sim.startWave();
+    // Run until no enemies remain and all spawned
+    for (let i = 0; i < 5000; i++) {
+      sim.tick(0.05);
+      if (sim.state.phase === 'prep' || sim.state.phase === 'victory' || sim.state.phase === 'defeat') break;
+    }
+    expect(['prep', 'victory', 'defeat']).toContain(sim.state.phase);
+  });
+});
+```
+
+**Step 2: Implement `tickCombat` in GameSimulation**
+
+Replace the `protected tickCombat` stub from Task 12a with the full implementation:
+
+```typescript
+// In GameSimulation.ts — replace the stub with the real tickCombat:
+private tickCombat(dt: number): void {
+  this.waveElapsedSec += dt;
+
+  // Spawn enemies from queue
+  while (this.spawnQueue.length > 0 && this.spawnQueue[0].spawnAtSec <= this.waveElapsedSec) {
+    const spawn = this.spawnQueue.shift()!;
+    this.enemySystem.spawnEnemy(spawn.enemyType as any, spawn.hp, spawn.speed, spawn.armor, spawn.tags);
+  }
+
+  // Move enemies
+  this.enemySystem.update(dt);
+
+  // Process tower attacks
+  const enemies = this.enemySystem.getAliveEnemies();
+  const towers = this.towerSystem.getAllTowers();
+
+  for (const tower of towers) {
+    const attack = this.combatSystem.processAttack(tower, enemies, this.room.state.tick);
+    if (!attack) continue;
+
+    this.enemySystem.damageEnemy(attack.targetId, attack.damage);
+
+    for (const effect of attack.onHitEffects) {
+      if (effect.element) {
+        this.enemySystem.applyStatus(attack.targetId, {
+          element: effect.element,
+          type: this.elementToStatusType(effect.element),
+          stacks: 1,
+          remainingSec: effect.durationSec ?? 5,
+        });
+      }
+    }
+
+    const enemy = this.enemySystem.getEnemy(attack.targetId);
+    if (enemy && enemy.alive && attack.onHitEffects[0]?.element) {
+      this.reactionSystem.checkReaction(enemy, attack.onHitEffects[0].element, attack.damage);
+    }
+
+    for (const splashId of attack.splashTargetIds) {
+      this.enemySystem.damageEnemy(splashId, Math.floor(attack.damage * 0.5));
+    }
+  }
+
+  // Handle leaked enemies — each leak deals 1 damage to base
+  const leaked = this.enemySystem.getLeakedEnemies();
+  for (const _enemy of leaked) {
+    this.room.state.baseHp -= 1;
+  }
+
+  // Check defeat
+  if (this.room.state.baseHp <= 0) {
+    this.room.state.baseHp = 0;
+    this.room.state.phase = 'defeat';
+    return;
+  }
+
+  // Check wave complete
+  if (this.spawnQueue.length === 0 && this.enemySystem.aliveCount === 0) {
+    const waveConfig = this.waveScheduler.getCurrentWaveConfig();
+    if (waveConfig) this.economy.addWaveBonus(this.waveScheduler.currentWave, this.room.playerCount);
+
+    if (!this.waveScheduler.hasMoreWaves()) {
+      this.room.state.phase = 'victory';
+    } else {
+      this.room.state.phase = 'prep';
+      this.room.state.prepTimeRemaining = PREP_PHASE_DURATION_SEC;
+    }
+  }
+}
+
+private elementToStatusType(element: ElementType): string {
+  switch (element) {
+    case 'fire':   return 'burning';
+    case 'water':  return 'soaked';
+    case 'ice':    return 'cold';
+    case 'poison': return 'toxin';
+  }
+}
+```
+
+**Step 3: Run all GameSimulation tests**
+
+Run: `cd packages/server && pnpm test -- --run src/game/GameSimulation`
+Expected: all tests (phase + combat) PASS
+
+**Step 4: Commit**
+
+```bash
+git add packages/server/src/game/GameSimulation.ts packages/server/src/game/GameSimulation.combat.test.ts
+git commit -m "feat: add combat tick integration to game simulation (12b)"
 ```
 
 ---
@@ -2820,19 +2787,55 @@ git commit -m "feat: add game simulation orchestrator wiring all server systems"
 
 **Parallel:** yes (with Tasks 14, 15)
 **Blocked by:** Task 3
-**Owned files:** `packages/client/src/scenes/BootScene.ts`, `packages/client/src/scenes/GameScene.ts`, `packages/client/src/scenes/HudScene.ts`, `packages/client/src/main.ts`
+**Owned files:** `packages/client/src/scenes/BootScene.ts`, `packages/client/src/scenes/GameScene.ts`, `packages/client/src/scenes/HudScene.ts`, `packages/client/src/main.ts`, `packages/client/src/assets/manifest.ts`
 
 **Files:**
+- Create: `packages/client/src/assets/manifest.ts`
 - Create: `packages/client/src/scenes/BootScene.ts`
 - Create: `packages/client/src/scenes/GameScene.ts`
 - Create: `packages/client/src/scenes/HudScene.ts`
 - Modify: `packages/client/src/main.ts`
 
-**Step 1: Create BootScene (asset loading)**
+**Step 1: Create asset manifest**
+
+Instead of hardcoding placeholder texture generation in BootScene, define a manifest that maps asset keys to their source (a real file path, or a placeholder color config). When real sprites are ready, update only the manifest — no scene code changes needed.
+
+```typescript
+// packages/client/src/assets/manifest.ts
+
+export type AssetEntry =
+  | { kind: 'image'; key: string; path: string }
+  | { kind: 'placeholder'; key: string; color: number; width?: number; height?: number };
+
+export const ASSET_MANIFEST: AssetEntry[] = [
+  // Towers — replace 'placeholder' with 'image' + real path when sprites are ready
+  { kind: 'placeholder', key: 'tower_fire',    color: 0xff4400 },
+  { kind: 'placeholder', key: 'tower_water',   color: 0x0088ff },
+  { kind: 'placeholder', key: 'tower_ice',     color: 0x88ccff },
+  { kind: 'placeholder', key: 'tower_poison',  color: 0x44cc44 },
+  { kind: 'placeholder', key: 'tower_shared',  color: 0xaaaaaa },
+  // Enemies
+  { kind: 'placeholder', key: 'enemy_grunt',     color: 0xcc0000 },
+  { kind: 'placeholder', key: 'enemy_runner',    color: 0xff8800 },
+  { kind: 'placeholder', key: 'enemy_tank',      color: 0x880000 },
+  { kind: 'placeholder', key: 'enemy_flyer',     color: 0xcc00cc },
+  { kind: 'placeholder', key: 'enemy_invisible', color: 0x444444 },
+  { kind: 'placeholder', key: 'enemy_boss',      color: 0xff0000 },
+  // Map tiles
+  { kind: 'placeholder', key: 'tile_path',  color: 0x665533 },
+  { kind: 'placeholder', key: 'tile_build', color: 0x336633 },
+  { kind: 'placeholder', key: 'tile_empty', color: 0x222222 },
+  // Effects
+  { kind: 'placeholder', key: 'projectile', color: 0xffff00, width: 16, height: 16 },
+];
+```
+
+**Step 2: Create BootScene (reads from manifest)**
 
 ```typescript
 // packages/client/src/scenes/BootScene.ts
 import Phaser from 'phaser';
+import { ASSET_MANIFEST } from '../assets/manifest';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -2851,45 +2854,34 @@ export class BootScene extends Phaser.Scene {
       fill.x = width / 2 - 198 + fill.width / 2;
     });
 
-    // Placeholder assets — real sprites loaded later
-    // Generate colored rectangles as placeholder tower/enemy textures
-    this.createPlaceholderTextures();
-  }
-
-  private createPlaceholderTextures(): void {
-    const colors: Record<string, number> = {
-      tower_fire: 0xff4400,
-      tower_water: 0x0088ff,
-      tower_ice: 0x88ccff,
-      tower_poison: 0x44cc44,
-      tower_shared: 0xaaaaaa,
-      enemy_grunt: 0xcc0000,
-      enemy_runner: 0xff8800,
-      enemy_tank: 0x880000,
-      enemy_flyer: 0xcc00cc,
-      enemy_invisible: 0x444444,
-      enemy_boss: 0xff0000,
-      tile_path: 0x665533,
-      tile_build: 0x336633,
-      tile_empty: 0x222222,
-      projectile: 0xffff00,
-    };
-
-    for (const [key, color] of Object.entries(colors)) {
-      const gfx = this.add.graphics();
-      gfx.fillStyle(color);
-      gfx.fillRect(0, 0, 64, 64);
-      gfx.generateTexture(key, 64, 64);
-      gfx.destroy();
+    // Load real images from manifest; generate placeholders for the rest
+    for (const entry of ASSET_MANIFEST) {
+      if (entry.kind === 'image') {
+        this.load.image(entry.key, entry.path);
+      }
     }
   }
 
   create(): void {
+    // Generate placeholder textures for entries without real sprites
+    for (const entry of ASSET_MANIFEST) {
+      if (entry.kind === 'placeholder') {
+        const w = entry.width ?? 64;
+        const h = entry.height ?? 64;
+        const gfx = this.add.graphics();
+        gfx.fillStyle(entry.color);
+        gfx.fillRect(0, 0, w, h);
+        gfx.generateTexture(entry.key, w, h);
+        gfx.destroy();
+      }
+    }
+
     this.scene.start('GameScene');
     this.scene.start('HudScene');
   }
 }
 ```
+
 
 **Step 2: Create GameScene (main game rendering)**
 
@@ -3507,7 +3499,7 @@ git commit -m "feat: add projectile pool for tower attack visuals"
 
 ---
 
-## Phase 5: Networking — Client-Server Integration
+## Phase 5: Networking — Client-Server Integration (Tasks 18, 18b, 19-21)
 
 ### Task 18: Socket.IO Server Setup
 
@@ -3732,6 +3724,230 @@ Expected: all tests PASS
 ```bash
 git add packages/server/src/networking/ packages/server/src/index.ts packages/server/package.json
 git commit -m "feat: add Socket.IO server with command handling and snapshot broadcasting"
+```
+
+---
+
+### Task 18b: Player Reconnection
+
+**Parallel:** no
+**Blocked by:** Task 18
+**Owned files:** `packages/server/src/networking/ReconnectionManager.ts`, `packages/server/src/networking/ReconnectionManager.test.ts`
+
+**Files:**
+- Create: `packages/server/src/networking/ReconnectionManager.ts`
+- Create: `packages/server/src/networking/ReconnectionManager.test.ts`
+- Modify: `packages/server/src/networking/SocketServer.ts` (wire reconnection)
+- Modify: `packages/client/src/networking/NetworkManager.ts` (auto-reconnect logic)
+
+**Step 1: Write failing tests**
+
+```typescript
+// packages/server/src/networking/ReconnectionManager.test.ts
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { ReconnectionManager } from './ReconnectionManager';
+
+describe('ReconnectionManager', () => {
+  let manager: ReconnectionManager;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    manager = new ReconnectionManager(60_000); // 60s grace period
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    manager.destroy();
+  });
+
+  it('registers a player with their socket ID', () => {
+    manager.register('player-1', 'socket-abc');
+    expect(manager.getSocketId('player-1')).toBe('socket-abc');
+  });
+
+  it('marks player as disconnected (not removed) on disconnect', () => {
+    manager.register('player-1', 'socket-abc');
+    manager.markDisconnected('player-1');
+    expect(manager.isConnected('player-1')).toBe(false);
+    expect(manager.exists('player-1')).toBe(true);
+  });
+
+  it('re-associates socket on reconnect and marks connected', () => {
+    manager.register('player-1', 'socket-abc');
+    manager.markDisconnected('player-1');
+    const result = manager.reconnect('player-1', 'socket-xyz');
+    expect(result).toBe(true);
+    expect(manager.getSocketId('player-1')).toBe('socket-xyz');
+    expect(manager.isConnected('player-1')).toBe(true);
+  });
+
+  it('removes player after grace period expires', () => {
+    manager.register('player-1', 'socket-abc');
+    manager.markDisconnected('player-1');
+    vi.advanceTimersByTime(61_000);
+    expect(manager.exists('player-1')).toBe(false);
+  });
+
+  it('cancels grace period timer on reconnect', () => {
+    manager.register('player-1', 'socket-abc');
+    manager.markDisconnected('player-1');
+    manager.reconnect('player-1', 'socket-xyz');
+    vi.advanceTimersByTime(61_000);
+    expect(manager.exists('player-1')).toBe(true); // grace period was cancelled
+  });
+});
+```
+
+**Step 2: Run tests to verify they fail**
+
+Run: `cd packages/server && pnpm test -- --run src/networking/ReconnectionManager.test.ts`
+Expected: FAIL
+
+**Step 3: Implement ReconnectionManager**
+
+```typescript
+// packages/server/src/networking/ReconnectionManager.ts
+
+interface PlayerRecord {
+  playerId: string;
+  socketId: string;
+  connected: boolean;
+  graceTimer: ReturnType<typeof setTimeout> | null;
+}
+
+type OnExpiredCallback = (playerId: string) => void;
+
+export class ReconnectionManager {
+  private players: Map<string, PlayerRecord> = new Map();
+  private gracePeriodMs: number;
+  private onExpired: OnExpiredCallback | null = null;
+
+  constructor(gracePeriodMs = 60_000) {
+    this.gracePeriodMs = gracePeriodMs;
+  }
+
+  onGraceExpired(callback: OnExpiredCallback): void {
+    this.onExpired = callback;
+  }
+
+  register(playerId: string, socketId: string): void {
+    this.players.set(playerId, {
+      playerId,
+      socketId,
+      connected: true,
+      graceTimer: null,
+    });
+  }
+
+  markDisconnected(playerId: string): void {
+    const record = this.players.get(playerId);
+    if (!record) return;
+    record.connected = false;
+    record.graceTimer = setTimeout(() => {
+      this.players.delete(playerId);
+      this.onExpired?.(playerId);
+    }, this.gracePeriodMs);
+  }
+
+  reconnect(playerId: string, newSocketId: string): boolean {
+    const record = this.players.get(playerId);
+    if (!record) return false;
+    if (record.graceTimer) {
+      clearTimeout(record.graceTimer);
+      record.graceTimer = null;
+    }
+    record.socketId = newSocketId;
+    record.connected = true;
+    return true;
+  }
+
+  getSocketId(playerId: string): string | undefined {
+    return this.players.get(playerId)?.socketId;
+  }
+
+  isConnected(playerId: string): boolean {
+    return this.players.get(playerId)?.connected ?? false;
+  }
+
+  exists(playerId: string): boolean {
+    return this.players.has(playerId);
+  }
+
+  getPlayerIdForSocket(socketId: string): string | undefined {
+    for (const record of this.players.values()) {
+      if (record.socketId === socketId) return record.playerId;
+    }
+    return undefined;
+  }
+
+  destroy(): void {
+    for (const record of this.players.values()) {
+      if (record.graceTimer) clearTimeout(record.graceTimer);
+    }
+    this.players.clear();
+  }
+}
+```
+
+**Step 4: Wire reconnection into SocketServer**
+
+In `SocketServer.ts`, add a `ReconnectionManager` instance per room. Update the `join_game` handler to `register()` the player, the `disconnect` handler to call `markDisconnected()` (not `removePlayer()`), and add a `reconnect` command handler:
+
+```typescript
+// In handleConnection — add reconnect command handling:
+case 'reconnect': {
+  const existingPlayerId = (cmd as any).playerId as string;
+  const success = reconnManager.reconnect(existingPlayerId, socket.id);
+  if (success) {
+    playerId = existingPlayerId;
+    socket.join(roomId);
+    sim.markPlayerConnected(playerId, true);
+    ack?.({ ok: true });
+    this.broadcastSnapshot(roomId, sim);
+  } else {
+    ack?.({ ok: false, reason: 'Unknown player ID or grace period expired' });
+  }
+  break;
+}
+
+// In disconnect handler — use markDisconnected instead of removePlayer:
+socket.on('disconnect', () => {
+  reconnManager.markDisconnected(playerId);
+  sim.markPlayerConnected(playerId, false);
+  this.broadcastSnapshot(roomId, sim);
+});
+```
+
+**Step 5: Add reconnection logic to client NetworkManager**
+
+In `NetworkManager.ts`, store the assigned `playerId` from the server and auto-send a reconnect command on socket reconnect:
+
+```typescript
+// In NetworkManager:
+private storedPlayerId: string | null = null;
+
+// After join_game succeeds, store the playerId returned by server snapshot
+// (or pass it explicitly from server ack)
+// On socket 'reconnect' event, send reconnect command:
+this.socket.on('connect', () => {
+  if (this.storedPlayerId) {
+    // This is a reconnection — send reconnect command
+    this.sendCommand({ type: 'reconnect', playerId: this.storedPlayerId } as any);
+  }
+  resolve?.();
+});
+```
+
+**Step 6: Run tests to verify they pass**
+
+Run: `cd packages/server && pnpm test -- --run src/networking/ReconnectionManager.test.ts`
+Expected: all tests PASS
+
+**Step 7: Commit**
+
+```bash
+git add packages/server/src/networking/ReconnectionManager.ts packages/server/src/networking/ReconnectionManager.test.ts
+git commit -m "feat: add player reconnection with 60s grace period"
 ```
 
 ---
@@ -4116,10 +4332,12 @@ git commit -m "feat: wire client scenes to network with GameClient orchestrator"
 
 ## Phase 6: Game Content — Data & Balancing
 
+> **Scheduling note:** Tasks 22, 23, 24 have no real dependencies beyond Task 3 (shared types). They can and should be started in Phase 2 timeframe in parallel with server core work — the data is needed by Task 12a/12b which import directly from `@td/shared/data/*`. Task 25 is eliminated: there are no stubs to re-wire since Tasks 22-24 supply the real data from the start.
+
 ### Task 22: Tower Configuration Data
 
-**Parallel:** yes (with Task 23, 24)
-**Blocked by:** Task 8
+**Parallel:** yes (with Task 23, 24) — *can start as early as Phase 2*
+**Blocked by:** Task 3
 **Owned files:** `packages/shared/src/data/towers.ts`
 
 **Files:**
@@ -4152,8 +4370,8 @@ git commit -m "feat: add complete tower configuration data for v0.1"
 
 ### Task 23: Wave Configuration Data (15-20 waves)
 
-**Parallel:** yes (with Task 22, 24)
-**Blocked by:** Task 7
+**Parallel:** yes (with Task 22, 24) — *can start as early as Phase 2*
+**Blocked by:** Task 3
 **Owned files:** `packages/shared/src/data/waves.ts`
 
 **Files:**
@@ -4187,7 +4405,7 @@ git commit -m "feat: add 20-wave configuration with escalating difficulty"
 
 ### Task 24: Map Configuration Data
 
-**Parallel:** yes (with Task 22, 23)
+**Parallel:** yes (with Task 22, 23) — *can start as early as Phase 2*
 **Blocked by:** Task 3
 **Owned files:** `packages/shared/src/data/maps.ts`
 
@@ -4221,30 +4439,9 @@ git commit -m "feat: add map, reaction, and class configuration data"
 
 ---
 
-### Task 25: Update Server Defaults to Use Shared Data
+### ~~Task 25~~ — ELIMINATED
 
-**Parallel:** no
-**Blocked by:** Task 22, Task 23, Task 24
-**Owned files:** `packages/server/src/data/defaults.ts`
-
-**Files:**
-- Modify: `packages/server/src/data/defaults.ts`
-
-**Step 1: Replace stub data with imports from shared package**
-
-Update `getDefaultTowerConfigs()`, `getDefaultWaveConfigs()`, `getDefaultMap()`, and `getDefaultReactionConfigs()` to import and return the real data from `@td/shared/data/*`.
-
-**Step 2: Run all server tests**
-
-Run: `cd packages/server && pnpm test`
-Expected: all tests PASS
-
-**Step 3: Commit**
-
-```bash
-git add packages/server/src/data/defaults.ts
-git commit -m "refactor: wire server to shared game content data"
-```
+> Task 25 ("Update Server Defaults to Use Shared Data") is eliminated. There is no `defaults.ts` stub file to re-wire — `GameSimulation` imports directly from `@td/shared/data/*` from day one. Tasks 22-24 supply real data starting in Phase 2, and Task 12a/12b depend on them directly. No wiring step needed.
 
 ---
 
@@ -4752,8 +4949,8 @@ git commit -m "test: add end-to-end integration tests for full game flow"
 ## Team Assignment Recommendation (v0.1)
 
 ### Trey — Server Lead
-- **Tasks:** 4, 5, 6, 7, 8, 10, 11, 12, 18, 25, 30
-- **Focus:** All server-side game logic, game simulation, Socket.IO server, integration tests
+- **Tasks:** 4, 5, 6, 7, 8, 10, 11, 12a, 12b, 18, 18b, 30
+- **Focus:** All server-side game logic, game simulation, Socket.IO server, reconnection, integration tests
 
 ### Matt — Client Lead
 - **Tasks:** 13, 14, 15, 16, 17, 19, 20, 21, 27, 28, 29
@@ -4761,7 +4958,7 @@ git commit -m "test: add end-to-end integration tests for full game flow"
 
 ### Milk — Shared & Data Lead
 - **Tasks:** 1, 2, 3, 9, 22, 23, 24, 26
-- **Focus:** Monorepo setup, shared types, enemy system, all game content data, audio system
+- **Focus:** Monorepo setup, shared types, enemy system, all game content data (start Tasks 22-24 in Phase 2), audio system
 
 ### Parallelization Opportunities
 
@@ -4773,8 +4970,9 @@ These task groups can run in parallel across developers:
 | Server core | 4+5+6+7 (sequential per dev) | Trey |
 | Client core | 13+14+15 (parallel) | Matt |
 | Server combat | 8 (Trey) + 9 (Milk) | Parallel |
-| Game data | 22+23+24 (parallel) | Milk |
-| Networking | 18 (Trey) + 19 (Matt) | Parallel |
+| Game data | 22+23+24 (parallel) — start in Phase 2! | Milk |
+| Game sim | 12a → 12b (sequential, 12b depends on 12a) | Trey |
+| Networking | 18 (Trey) + 19 (Matt) + 18b after 18 | Sequential then Trey |
 | Audio + Lobby | 26 (Milk) + 27 (Matt) | Parallel |
 
 ---
@@ -4884,22 +5082,33 @@ These task groups can run in parallel across developers:
 ## Dependency Graph Summary
 
 ```
-Phase 1 (Tasks 1-3): Scaffolding → No dependencies
-Phase 2 (Tasks 4-7): Server Core → Depends on Phase 1
-Phase 3 (Tasks 8-12): Combat → Depends on Phase 2
-Phase 4 (Tasks 13-17): Client → Depends on Task 3 only
-Phase 5 (Tasks 18-21): Networking → Depends on Phase 3 + Phase 4
-Phase 6 (Tasks 22-25): Data → Depends on relevant systems
-Phase 7 (Tasks 26-29): Polish → Depends on Phase 4 + Phase 5
-Phase 8 (Task 30): Integration → Depends on everything
+Phase 1 (Tasks 1-3):    Scaffolding → No dependencies
+Phase 2 (Tasks 4-7):    Server Core → Depends on Phase 1
+Phase 2 (Tasks 22-24):  Game Data   → Depends on Task 3 only (start in parallel with Phase 2)
+Phase 3 (Tasks 8-12b):  Combat      → Depends on Phase 2 + Tasks 22-24
+Phase 4 (Tasks 13-17):  Client      → Depends on Task 3 only
+Phase 5 (Tasks 18-18b, 19-21): Networking → Depends on Phase 3 + Phase 4
+Phase 7 (Tasks 26-29):  Polish      → Depends on Phase 4 + Phase 5
+Phase 8 (Task 30):      Integration → Depends on everything
+
+Task 25: ELIMINATED (no defaults.ts stub re-wiring needed)
 ```
 
 ```
-[1,2,3] ──┬──> [4,5,6,7] ──> [8,9] ──> [10] ──> [11] ──> [12] ──> [18] ──> [21] ──> [29] ──> [30]
-           │                                                          │        │
-           └──> [13,14,15] ──> [16,17] ──────────────────────> [19,20]┘   [27,28]┘
-           │                                                          │
-           └──> [22,23,24] ──────────────────────────────────> [25]───┘
-                                                                      │
-                                                               [26]───┘
+[1,2,3] ──┬──> [4,5,6,7] ──> [8,9] ──> [10] ──> [11] ──> [12a] ──> [12b] ──> [18] ──> [18b] ──> [21] ──> [29] ──> [30]
+           │                                                 ↑                    │                   │
+           │                                          [22,23,24]                  └────> [19,20]┘  [27,28]┘
+           │                 (Tasks 22-24 depend only on Task 3; start Phase 2)         │
+           └──> [13,14,15] ──> [16,17] ────────────────────────────────────────> [19,20]┘
+           │
+           └──> [22,23,24] ─────────────────────────────────────────────────────> [12a]┘
+                                                                                         │
+                                                                                  [26]───┘
+
+Key changes vs original plan:
+- Task 12 split → 12a (phase management) + 12b (combat tick); 12b depends on 12a
+- Tasks 22-24 moved to Phase 2 timeframe; depend only on Task 3
+- Task 25 eliminated (no stub re-wiring)
+- Task 18b (reconnection) added after Task 18
+- `concurrently` added as root dev dependency (Task 1)
 ```
