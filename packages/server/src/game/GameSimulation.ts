@@ -116,6 +116,7 @@ export class GameSimulation {
     this.room.state.phase = 'combat';
     this.spawnQueue = this.waveScheduler.getSpawnEvents(this.room.playerCount);
     this.waveElapsedSec = 0;
+    console.log(`[DEBUG] startWave: wave=${this.room.state.wave}, spawnQueue=${this.spawnQueue.length}, baseHp=${this.room.state.baseHp}, players=${this.room.playerCount}`);
   }
 
   tick(dt: number): void {
@@ -180,6 +181,9 @@ export class GameSimulation {
 
     // Handle leaked enemies — each leak deals 1 damage to base
     const leaked = this.enemySystem.getLeakedEnemies();
+    if (leaked.length > 0) {
+      console.log(`[DEBUG] ${leaked.length} enemies leaked! baseHp=${this.room.state.baseHp}, wave=${this.room.state.wave}, elapsed=${this.waveElapsedSec.toFixed(1)}s`);
+    }
     for (const _enemy of leaked) {
       this.room.state.baseHp -= 1;
     }
@@ -188,6 +192,7 @@ export class GameSimulation {
     if (this.room.state.baseHp <= 0) {
       this.room.state.baseHp = 0;
       this.room.state.phase = 'defeat';
+      console.log(`[DEBUG] DEFEAT! wave=${this.room.state.wave}, tick=${this.room.state.tick}`);
       return;
     }
 
@@ -205,6 +210,11 @@ export class GameSimulation {
         this.room.state.prepTimeRemaining = PREP_PHASE_DURATION_SEC;
       }
     }
+  }
+
+  /** Dev/test only — grant gold directly */
+  cheatAddGold(amount: number): void {
+    this.economy.addGold(amount);
   }
 
   private elementToStatusType(element: ElementType): string {

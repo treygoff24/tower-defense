@@ -20,8 +20,8 @@ const io = new Server(httpServer, {
   },
 });
 
-// Create game simulation instance
-const sim = GameSimulation.create('main-room');
+// Create game simulation instance (mutable — reset creates a fresh one)
+let sim = GameSimulation.create('main-room');
 
 // Start game loop
 const gameLoop = new GameLoop((dt: number) => {
@@ -35,6 +35,21 @@ console.log(`Game loop started at ${TICK_RATE}Hz`);
 // Handle socket connections
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
+
+  // Dev-only: reset the game simulation (used by E2E tests)
+  socket.on('reset_game', (ack: (result: { ok: boolean }) => void) => {
+    console.log(`[reset] Game simulation reset by ${socket.id}`);
+    sim = GameSimulation.create('main-room');
+    if (typeof ack === 'function') ack({ ok: true });
+  });
+
+  // Dev-only: cheat commands for testing
+  socket.on('dev_cheat', (cheat: { type: string; amount?: number }, ack: (result: { ok: boolean }) => void) => {
+    if (cheat.type === 'add_gold') {
+      sim.cheatAddGold(cheat.amount ?? 10000);
+    }
+    if (typeof ack === 'function') ack({ ok: true });
+  });
 
   // Handle client commands — uses Socket.IO ack callback so client Promises resolve
   socket.on('command', (command: ClientCommand, ack: (result: { ok: boolean; reason?: string }) => void) => {
