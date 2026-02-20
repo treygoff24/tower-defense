@@ -75,18 +75,24 @@ export class LobbyScene extends Phaser.Scene {
     const startX = W / 2 - (elements.length - 1) * spacing / 2;
     elements.forEach((el, i) => {
       const bx = startX + i * spacing;
+
+      // Wrap badge in a Container so tween moves everything together
+      const badgeContainer = this.add.container(bx, badgeY);
+
       const bg = this.add.graphics();
       bg.fillStyle(0x0d1a30, 0.8);
-      bg.fillCircle(bx, badgeY, 32);
+      bg.fillCircle(0, 0, 32);           // local origin (0,0)
       bg.lineStyle(2, Phaser.Display.Color.HexStringToColor(el.color).color, 0.9);
-      bg.strokeCircle(bx, badgeY, 32);
+      bg.strokeCircle(0, 0, 32);
 
-      this.add.text(bx, badgeY - 6, el.icon, { fontSize: '26px' }).setOrigin(0.5);
-      this.add.text(bx, badgeY + 22, el.name, { fontSize: '11px', fontFamily: 'Arial', color: el.color }).setOrigin(0.5);
+      const iconText = this.add.text(0, -6, el.icon, { fontSize: '26px' }).setOrigin(0.5);
+      const nameText = this.add.text(0, 22, el.name, { fontSize: '11px', fontFamily: 'Arial', color: el.color }).setOrigin(0.5);
 
-      // Float animation with offset per element
+      badgeContainer.add([bg, iconText, nameText]);
+
+      // Float animation: bobs 5 px upward then back — correct because we tween container.y
       this.tweens.add({
-        targets: [bg],
+        targets: badgeContainer,
         y: badgeY - 5,
         duration: 1500 + i * 200,
         yoyo: true,
