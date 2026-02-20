@@ -22,22 +22,28 @@ export class LobbyScene extends Phaser.Scene {
     this.addFloatingClouds(W, H);
 
     // ── Title card ────────────────────────────────────────────────
-    // Backdrop panel
-    const panelG = this.add.graphics();
-    panelG.fillStyle(0x0d1a30, 0.9);
-    panelG.fillRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
-    panelG.lineStyle(2, 0x4466aa, 0.8);
-    panelG.strokeRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
+    // Use Tiny Swords banner image if loaded, otherwise fallback graphics
+    if (this.textures.exists('ui_banner')) {
+      const banner = this.add.image(W / 2, H * 0.19, 'ui_banner');
+      banner.setDisplaySize(620, 130);
+      banner.setAlpha(0.92);
+    } else {
+      const panelG = this.add.graphics();
+      panelG.fillStyle(0x0d1a30, 0.9);
+      panelG.fillRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
+      panelG.lineStyle(2, 0x4466aa, 0.8);
+      panelG.strokeRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
+    }
 
     // Title glow layer
     const titleGlow = this.add.text(W / 2, H * 0.19 + 2, '⚔  ELEMENT DEFENSE  ⚔', {
-      fontSize: '48px',
+      fontSize: '44px',
       fontFamily: '"Arial Black", Arial',
-      color: '#002244',
-    }).setOrigin(0.5).setAlpha(0.6);
+      color: '#001122',
+    }).setOrigin(0.5).setAlpha(0.5);
 
     const title = this.add.text(W / 2, H * 0.19, '⚔  ELEMENT DEFENSE  ⚔', {
-      fontSize: '48px',
+      fontSize: '44px',
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffd700',
@@ -64,6 +70,13 @@ export class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── Element badges ────────────────────────────────────────────
+    // Ribbon decoration above badges
+    if (this.textures.exists('ui_ribbon_big')) {
+      const ribbon = this.add.image(W / 2, H * 0.33, 'ui_ribbon_big');
+      ribbon.setDisplaySize(480, 48);
+      ribbon.setAlpha(0.85);
+    }
+
     const elements = [
       { icon: '🔥', name: 'Fire',   color: '#ff6644' },
       { icon: '💧', name: 'Water',  color: '#44aaff' },
@@ -102,6 +115,13 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     // ── Name input ────────────────────────────────────────────────
+    // WoodTable backdrop behind the input section
+    if (this.textures.exists('ui_wood_table')) {
+      const table = this.add.image(W / 2, H * 0.545, 'ui_wood_table');
+      table.setDisplaySize(340, 120);
+      table.setAlpha(0.75);
+    }
+
     this.add.text(W / 2, H * 0.49, 'PLAYER NAME', {
       fontSize: '13px',
       fontFamily: '"Arial Black", Arial',
@@ -188,36 +208,71 @@ export class LobbyScene extends Phaser.Scene {
   private createButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
 
-    const gfx = this.add.graphics();
-    const drawBtn = (hover: boolean) => {
-      gfx.clear();
-      gfx.fillStyle(hover ? 0x006633 : 0x004422, 1);
-      gfx.fillRoundedRect(-110, -28, 220, 56, 12);
-      gfx.lineStyle(2, hover ? 0x00ff88 : 0x008844, 1);
-      gfx.strokeRoundedRect(-110, -28, 220, 56, 12);
-    };
-    drawBtn(false);
+    const useSprite = this.textures.exists('ui_btn_blue_regular') && this.textures.exists('ui_btn_blue_pressed');
 
-    const txt = this.add.text(0, 0, label, {
-      fontSize: '22px',
-      fontFamily: '"Arial Black", Arial',
-      fontStyle: 'bold',
-      color: '#ffffff',
-      stroke: '#002211',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
+    if (useSprite) {
+      // Tiny Swords sprite button (320×320 source, displayed at 240×60)
+      const btnImg = this.add.image(0, 0, 'ui_btn_blue_regular');
+      btnImg.setDisplaySize(240, 60);
 
-    const hitArea = this.add.rectangle(0, 0, 220, 56, 0x000000, 0)
-      .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(0, -3, label, {
+        fontSize: '20px',
+        fontFamily: '"Arial Black", Arial',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#001133',
+        strokeThickness: 3,
+      }).setOrigin(0.5);
 
-    hitArea.on('pointerover', () => { drawBtn(true); });
-    hitArea.on('pointerout', () => { drawBtn(false); });
-    hitArea.on('pointerdown', () => {
-      this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 80, yoyo: true });
-    });
-    hitArea.on('pointerup', () => { onClick(); });
+      const hitArea = this.add.rectangle(0, 0, 240, 60, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
 
-    container.add([gfx, txt, hitArea]);
+      hitArea.on('pointerover', () => { btnImg.setTexture('ui_btn_blue_pressed'); });
+      hitArea.on('pointerout',  () => { btnImg.setTexture('ui_btn_blue_regular'); });
+      hitArea.on('pointerdown', () => {
+        btnImg.setTexture('ui_btn_blue_pressed');
+        this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 80, yoyo: true });
+      });
+      hitArea.on('pointerup', () => {
+        btnImg.setTexture('ui_btn_blue_regular');
+        onClick();
+      });
+
+      container.add([btnImg, txt, hitArea]);
+    } else {
+      // Fallback: drawn graphics button
+      const gfx = this.add.graphics();
+      const drawBtn = (hover: boolean) => {
+        gfx.clear();
+        gfx.fillStyle(hover ? 0x006633 : 0x004422, 1);
+        gfx.fillRoundedRect(-110, -28, 220, 56, 12);
+        gfx.lineStyle(2, hover ? 0x00ff88 : 0x008844, 1);
+        gfx.strokeRoundedRect(-110, -28, 220, 56, 12);
+      };
+      drawBtn(false);
+
+      const txt = this.add.text(0, 0, label, {
+        fontSize: '22px',
+        fontFamily: '"Arial Black", Arial',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#002211',
+        strokeThickness: 3,
+      }).setOrigin(0.5);
+
+      const hitArea = this.add.rectangle(0, 0, 220, 56, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+
+      hitArea.on('pointerover', () => { drawBtn(true); });
+      hitArea.on('pointerout', () => { drawBtn(false); });
+      hitArea.on('pointerdown', () => {
+        this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 80, yoyo: true });
+      });
+      hitArea.on('pointerup', () => { onClick(); });
+
+      container.add([gfx, txt, hitArea]);
+    }
+
     return container;
   }
 
