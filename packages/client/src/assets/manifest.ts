@@ -42,7 +42,8 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   // ── Buildings (static backgrounds for towers) ──────────────────────
   { kind: 'image', key: 'building_blue',   path: 'assets/Tiny Swords (Free Pack)/Buildings/Blue Buildings/Tower.png' },
   { kind: 'image', key: 'building_yellow', path: 'assets/Tiny Swords (Free Pack)/Buildings/Yellow Buildings/Tower.png' },
-  { kind: 'image', key: 'building_red',    path: 'assets/Tiny Swords (Free Pack)/Buildings/Red Buildings/Tower.png' },
+  { kind: 'image', key: 'building_red',      path: 'assets/Tiny Swords (Free Pack)/Buildings/Red Buildings/Tower.png' },
+  { kind: 'image', key: 'building_barracks', path: 'assets/Tiny Swords (Free Pack)/Buildings/Red Buildings/Barracks.png' },
   { kind: 'image', key: 'building_black',  path: 'assets/Tiny Swords (Free Pack)/Buildings/Black Buildings/Tower.png' },
   { kind: 'image', key: 'building_purple', path: 'assets/Tiny Swords (Free Pack)/Buildings/Purple Buildings/Tower.png' },
 

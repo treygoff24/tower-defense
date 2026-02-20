@@ -254,19 +254,29 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // ── Start marker — enemy spawn portal ────────────────────────
+    // ── Start marker — enemy spawn (Barracks or fallback arrow) ──
     if (waypoints.length > 0) {
       const sp = waypoints[0];
       const sx = sp.x * TILE_SIZE + TILE_SIZE / 2;
       const sy = sp.y * TILE_SIZE + TILE_SIZE / 2;
-      // Pulsing glow
-      g.fillStyle(0xff0000, 0.18);
-      g.fillCircle(sx, sy, TILE_SIZE * 0.6);
-      // Red arrow pointing right (direction enemies travel)
-      g.fillStyle(0xdd2222, 0.9);
-      g.fillTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
-      g.lineStyle(2, 0xff6666, 0.9);
-      g.strokeTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
+      // Red glow ring
+      g.fillStyle(0xff0000, 0.15);
+      g.fillCircle(sx, sy, TILE_SIZE * 0.65);
+      g.lineStyle(2, 0xff4444, 0.7);
+      g.strokeCircle(sx, sy, TILE_SIZE * 0.48);
+      if (this.textures.exists('building_barracks')) {
+        // Tiny Swords Barracks for the enemy base (Red Buildings)
+        const barracks = this.add.image(sx, sy - 4, 'building_barracks');
+        barracks.setScale(0.22);
+        barracks.setDepth(TERRAIN_DEPTH + 2);
+        barracks.setTint(0xff8888); // slight red tint to mark it as enemy
+      } else {
+        // Fallback: filled red arrow pointing right
+        g.fillStyle(0xdd2222, 0.9);
+        g.fillTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
+        g.lineStyle(2, 0xff6666, 0.9);
+        g.strokeTriangle(sx - 14, sy - 13, sx - 14, sy + 13, sx + 16, sy);
+      }
     }
 
     // ── End marker — player castle ────────────────────────────────
