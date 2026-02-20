@@ -42,10 +42,10 @@ export class ReactionSystem {
 
       switch (reaction.effect.type) {
         case 'damage_multiplier':
-          damage = Math.round(baseDamage * reaction.effect.value);
+          damage = Math.round(baseDamage * (reaction.effect.value ?? 1));
           break;
         case 'aoe_burst':
-          damage = reaction.effect.value;
+          damage = reaction.effect.value ?? 0;
           break;
         case 'apply_status':
           applyStatus = 'frozen';

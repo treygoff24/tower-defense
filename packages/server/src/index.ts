@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import { GameSimulation } from './game/GameSimulation.js';
 import { GameLoop } from './game/GameLoop.js';
 import { TICK_RATE } from '@td/shared';
+import type { ClientCommand } from '@td/shared';
 
 const PORT = 3001;
 
@@ -35,52 +36,50 @@ console.log(`Game loop started at ${TICK_RATE}Hz`);
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
-  // Handle client commands
-  socket.on('command', (command: { type: string; payload?: Record<string, unknown> }) => {
+  // Handle client commands — uses Socket.IO ack callback so client Promises resolve
+  socket.on('command', (command: ClientCommand, ack: (result: { ok: boolean; reason?: string }) => void) => {
     try {
       let result: { ok: boolean; reason?: string } = { ok: false, reason: 'Unknown command' };
 
       switch (command.type) {
-        case 'join_game': {
-          const playerName = command.payload?.playerName as string;
-          result = sim.addPlayer(socket.id, playerName);
+        case 'join_game':
+          result = sim.addPlayer(socket.id, command.playerName);
           break;
-        }
-        case 'select_class': {
-          const elementClass = command.payload?.elementClass as 'fire' | 'water' | 'ice' | 'poison';
-          result = sim.selectClass(socket.id, elementClass);
+        case 'select_class':
+          result = sim.selectClass(socket.id, command.elementClass);
           break;
-        }
-        case 'ready_up': {
+        case 'ready_up':
           result = sim.readyUp(socket.id);
           break;
-        }
-        case 'place_tower': {
-          const configId = command.payload?.configId as string;
-          const x = command.payload?.x as number;
-          const y = command.payload?.y as number;
-          result = sim.placeTower(socket.id, configId, x, y);
+        case 'place_tower':
+          result = sim.placeTower(socket.id, command.configId, command.x, command.y);
           break;
-        }
-        case 'sell_tower': {
-          const instanceId = command.payload?.instanceId as string;
-          // sellTower returns { ok: boolean; goldRefund?: number; reason?: string }
-          result = sim.sellTower(socket.id, instanceId);
+        case 'upgrade_tower':
+          result = { ok: false, reason: 'upgrade_tower not yet implemented' };
           break;
-        }
-        case 'start_wave': {
+        case 'sell_tower':
+          result = sim.sellTower(socket.id, command.instanceId);
+          break;
+        case 'start_wave':
           sim.startWave();
           result = { ok: true };
           break;
-        }
+        case 'reconnect':
+          result = { ok: false, reason: 'reconnect not yet implemented' };
+          break;
+        case 'chat':
+          // Broadcast chat to all clients
+          io.emit('chat', { playerId: socket.id, message: command.message });
+          result = { ok: true };
+          break;
         default:
-          result = { ok: false, reason: `Unknown command type: ${command.type}` };
+          result = { ok: false, reason: `Unknown command type` };
       }
 
-      socket.emit('command_ack', result);
+      if (typeof ack === 'function') ack(result);
     } catch (error) {
       console.error(`Error processing command from ${socket.id}:`, error);
-      socket.emit('command_ack', { ok: false, reason: 'Internal error' });
+      if (typeof ack === 'function') ack({ ok: false, reason: 'Internal error' });
     }
   });
 

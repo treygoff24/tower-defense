@@ -58,19 +58,19 @@ export class GameSimulation {
     };
   }
 
-  addPlayer(id: string, name: string) {
+  addPlayer(id: string, name: string): CommandResult {
     return this.room.addPlayer(id, name);
   }
 
-  removePlayer(id: string) {
+  removePlayer(id: string): void {
     this.room.removePlayer(id);
   }
 
-  selectClass(id: string, cls: ElementType) {
+  selectClass(id: string, cls: ElementType): CommandResult {
     return this.room.selectClass(id, cls);
   }
 
-  readyUp(id: string) {
+  readyUp(id: string): CommandResult {
     return this.room.readyUp(id);
   }
 
@@ -87,6 +87,15 @@ export class GameSimulation {
     if (!this.economy.canAfford(config.costGold)) return { ok: false, reason: 'Not enough gold' };
     const result = this.towerSystem.placeTower(configId, x, y, playerId);
     if (result.ok) this.economy.spendGold(config.costGold);
+    return { ok: result.ok, reason: result.reason };
+  }
+
+  sellTower(_playerId: string, instanceId: string): CommandResult & { goldRefund?: number } {
+    const result = this.towerSystem.sellTower(instanceId);
+    if (result.ok && result.goldRefund !== undefined) {
+      this.economy.addGold(result.goldRefund);
+      return { ok: true, goldRefund: result.goldRefund };
+    }
     return { ok: result.ok, reason: result.reason };
   }
 
