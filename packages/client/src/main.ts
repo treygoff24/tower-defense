@@ -28,15 +28,15 @@ game.events.once('ready', () => {
 
   const client = new GameClient();
 
+  // Store client in registry so scenes can access it
+  game.registry.set('gameClient', client);
+
   // Expose client globally for dev console debugging
   (window as unknown as { __gameClient: GameClient }).__gameClient = client;
 
-  client.connect('Player').then(() => {
-    client.bindScenes(gameScene, hudScene);
-    console.log('Game client connected and bound to scenes');
-  }).catch((err) => {
-    console.error('Failed to connect:', err);
-  });
+  // Bind scenes immediately (connection happens after player joins)
+  client.bindScenes(gameScene, hudScene);
+  console.log('Game client initialized and bound to scenes');
 });
 
 // eslint-disable-next-line no-console

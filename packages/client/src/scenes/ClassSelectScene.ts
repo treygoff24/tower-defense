@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import type { ElementType } from '@td/shared';
+import type { ElementType, GameState } from '@td/shared';
+import { GameClient } from '../GameClient';
 
 interface ClassCardData {
   element: ElementType;
@@ -229,10 +230,40 @@ export class ClassSelectScene extends Phaser.Scene {
   private emitReadyUp(): void {
     if (!this.selectedClass) return;
 
-    this.events.emit('class-selected', this.selectedClass);
-    this.events.emit('ready-up');
+    // Get GameClient from registry
+    const gameClient = this.registry.get('gameClient') as GameClient;
 
-    // Transition to game scene (will be replaced with actual game flow)
-    this.scene.start('GameScene');
+    if (gameClient) {
+      // Select class and ready up
+      gameClient.selectClass(this.selectedClass);
+      gameClient.readyUp();
+    }
+
+    // Listen for game state changes to transition to GameScene
+    this.checkGameStart();
+  }
+
+  private checkGameStart(): void {
+    const gameClient = this.registry.get('gameClient') as GameClient;
+    if (!gameClient) {
+      // For demo, transition after a delay if no client
+      this.time.delayedCall(1000, () => {
+        this.scene.start('GameScene');
+      });
+      return;
+    }
+
+    // Poll for game state changes
+    const checkInterval = this.time.addEvent({
+      delay: 500,
+      callback: () => {
+        const state = gameClient.getLatestState();
+        if (state && (state.phase === 'prep' || state.phase === 'combat')) {
+          checkInterval.remove();
+          this.scene.start('GameScene');
+        }
+      },
+      loop: true,
+    });
   }
 }

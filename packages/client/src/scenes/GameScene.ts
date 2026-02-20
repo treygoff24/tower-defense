@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import type { GameState, Vec2, TowerState, EnemyState, BuildZone } from '@td/shared';
+import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone } from '@td/shared';
 import { TILE_SIZE } from '@td/shared';
+import { GameClient } from '../GameClient';
 
 type Sprite = Phaser.GameObjects.Sprite;
 type Graphics = Phaser.GameObjects.Graphics;
@@ -10,10 +11,13 @@ export class GameScene extends Phaser.Scene {
   private enemySprites: Map<string, Sprite> = new Map();
   private pathGraphics!: Graphics;
   private buildZoneGraphics!: Graphics;
+  private ghostGraphics!: Graphics;
   private waypoints: Vec2[] = [];
   private buildZones: BuildZone[] = [];
   private mapWidth = 0;
   private mapHeight = 0;
+  private currentPhase: GamePhase = 'prep';
+  private selectedTowerId: string | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -29,6 +33,10 @@ export class GameScene extends Phaser.Scene {
     // Create graphics objects
     this.buildZoneGraphics = this.add.graphics();
     this.pathGraphics = this.add.graphics();
+    this.ghostGraphics = this.add.graphics();
+
+    // Set up mouse move for tower placement ghost
+    this.input.on('pointermove', this.handleMouseMove, this);
 
     // Set up click handler for tower placement
     this.input.on('pointerdown', this.handleTileClick, this);
@@ -36,8 +44,101 @@ export class GameScene extends Phaser.Scene {
     // Listen for state sync events
     this.events.on('sync-state', this.syncState, this);
 
+    // Listen for tower selection from UI
+    this.events.on('tower-selected', this.handleTowerSelected, this);
+    this.events.on('tower-deselected', this.handleTowerDeselected, this);
+
     // Demo map (will be replaced with server data)
     this.setupDemoMap();
+  }
+
+  update(_time: number, _delta: number): void {
+    // Get GameClient from registry
+    const gameClient = this.registry.get('gameClient') as GameClient;
+
+    if (gameClient) {
+      // Get latest state from interpolator
+      const state = gameClient.getLatestState();
+
+      if (state) {
+        // Check for phase transition
+        if (state.phase !== this.currentPhase) {
+          this.handlePhaseTransition(state.phase);
+          this.currentPhase = state.phase;
+        }
+
+        // Sync game objects with interpolated state
+        this.syncState(state);
+      }
+
+      // Show tower placement ghost during prep phase
+      if (this.currentPhase === 'prep' && this.selectedTowerId) {
+        // Ghost is drawn in handleMouseMove
+      }
+    }
+  }
+
+  private handlePhaseTransition(newPhase: GamePhase): void {
+    console.log('Phase transition:', this.currentPhase, '->', newPhase);
+
+    // Could add phase transition effects here
+    if (newPhase === 'combat') {
+      // Clear ghost when combat starts
+      this.ghostGraphics.clear();
+    }
+  }
+
+  private handleMouseMove(pointer: Phaser.Input.Pointer): void {
+    if (this.currentPhase !== 'prep' || !this.selectedTowerId) {
+      this.ghostGraphics.clear();
+      return;
+    }
+
+    const tileX = Math.floor(pointer.worldX / TILE_SIZE);
+    const tileY = Math.floor(pointer.worldY / TILE_SIZE);
+
+    // Redraw ghost
+    this.ghostGraphics.clear();
+
+    const isValid = this.isValidBuildTile(tileX, tileY) && !this.isTileOccupied(tileX, tileY);
+
+    // Draw ghost outline
+    this.ghostGraphics.lineStyle(2, isValid ? 0x00ff00 : 0xff0000, 0.8);
+    this.ghostGraphics.strokeRect(
+      tileX * TILE_SIZE,
+      tileY * TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE
+    );
+
+    // Semi-transparent fill
+    this.ghostGraphics.fillStyle(isValid ? 0x00ff00 : 0xff0000, 0.3);
+    this.ghostGraphics.fillRect(
+      tileX * TILE_SIZE,
+      tileY * TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE
+    );
+  }
+
+  private handleTowerSelected(configId: string): void {
+    this.selectedTowerId = configId;
+  }
+
+  private handleTowerDeselected(): void {
+    this.selectedTowerId = null;
+    this.ghostGraphics.clear();
+  }
+
+  private isTileOccupied(tileX: number, tileY: number): boolean {
+    for (const sprite of this.towerSprites.values()) {
+      const towerTileX = Math.floor(sprite.x / TILE_SIZE);
+      const towerTileY = Math.floor(sprite.y / TILE_SIZE);
+      if (towerTileX === tileX && towerTileY === tileY) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private setupDemoMap(): void {
@@ -140,8 +241,24 @@ export class GameScene extends Phaser.Scene {
     const tileX = Math.floor(pointer.worldX / TILE_SIZE);
     const tileY = Math.floor(pointer.worldY / TILE_SIZE);
 
-    // Emit tile-clicked event for tower placement UI
-    this.events.emit('tile-clicked', { tileX, tileY });
+    // Only handle tower placement during prep phase
+    if (this.currentPhase === 'prep' && this.selectedTowerId) {
+      const gameClient = this.registry.get('gameClient') as GameClient;
+      if (gameClient) {
+        // Check if tile is valid
+        if (this.isValidBuildTile(tileX, tileY) && !this.isTileOccupied(tileX, tileY)) {
+          // Emit tile-clicked event for tower placement UI
+          this.events.emit('tile-clicked', { tileX, tileY, configId: this.selectedTowerId });
+
+          // The actual network call is handled by the UI that selected the tower
+          // For now, we'll just emit the event and let the UI handle the network call
+          console.log(`Attempting to place tower ${this.selectedTowerId} at (${tileX}, ${tileY})`);
+        }
+      }
+    } else {
+      // Emit tile-clicked event for tower placement UI (legacy behavior)
+      this.events.emit('tile-clicked', { tileX, tileY });
+    }
   }
 
   syncState(state: GameState): void {
