@@ -49,6 +49,7 @@ export interface OnHitEffect {
   dps?: number;
   durationSec?: number;
   slowPercent?: number;
+  value?: number; // For effects like pushback distance
 }
 
 // ── Tower Instance (runtime state) ─────────────────────────
@@ -147,9 +148,10 @@ export interface ReactionConfig {
 
 export interface ReactionEffect {
   type: string;
-  value: number;
+  value?: number;
   aoeRadius?: number;
   durationSec?: number;
+  status?: string; // For applying status effects (e.g., freeze applies 'frozen')
 }
 
 // ── Map Types ──────────────────────────────────────────────
@@ -259,3 +261,10 @@ export const BASE_MAX_HP = 100;
 export const TOWER_SELL_REFUND_PERCENT = 0.7;
 export const MAX_PLAYERS = 4;
 export const TILE_SIZE = 64;
+
+// ── Data Configuration Exports ─────────────────────────────
+export { TOWER_CONFIGS } from './data/towers.js';
+export { WAVE_CONFIGS } from './data/waves.js';
+export { MAP_CONFIGS } from './data/maps.js';
+export { REACTION_CONFIGS } from './data/reactions.js';
+export { CLASS_CONFIGS } from './data/classes.js';
