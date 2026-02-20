@@ -3,183 +3,220 @@ import type { GameState, GamePhase, ElementType } from '@td/shared';
 import { GameClient } from '../GameClient';
 
 const ELEMENT_COLORS: Record<ElementType, number> = {
-  fire: 0xff4400,
-  water: 0x0088ff,
-  ice: 0x88ccff,
+  fire:   0xff4400,
+  water:  0x0088ff,
+  ice:    0x88ccff,
   poison: 0x44cc44,
 };
 
 const ELEMENT_NAMES: Record<ElementType, string> = {
-  fire: 'Pyromancer',
-  water: 'Hydromancer',
-  ice: 'Cryomancer',
-  poison: 'Necromancer',
+  fire:   'Pyromancer 🔥',
+  water:  'Hydromancer 💧',
+  ice:    'Cryomancer ❄',
+  poison: 'Necromancer ☠',
+};
+
+const ELEMENT_ICONS: Record<ElementType, string> = {
+  fire:   '🔥',
+  water:  '💧',
+  ice:    '❄',
+  poison: '☠',
 };
 
 export class HudScene extends Phaser.Scene {
   private goldText!: Phaser.GameObjects.Text;
   private waveText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
+  private hpBarFill!: Phaser.GameObjects.Graphics;
   private phaseText!: Phaser.GameObjects.Text;
   private prepTimerText!: Phaser.GameObjects.Text;
   private startWaveButton!: Phaser.GameObjects.Container;
   private classIcon!: Phaser.GameObjects.Container;
   private playerElement: ElementType | null = null;
+  private prevBaseHp = -1;
+  private enemyCountText!: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'HudScene' });
   }
 
   create(): void {
-    // Transparent background for overlay
-
-    // Create HUD elements
     this.createHudElements();
   }
 
   private createHudElements(): void {
-    const screenWidth = this.cameras.main.width;
-    const screenHeight = this.cameras.main.height;
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
 
-    // Top left - Gold
-    this.goldText = this.add.text(20, 20, 'Gold: 0', {
-      fontSize: '24px',
-      fontFamily: 'Arial',
+    // ── Gold panel (top-left) ──────────────────────────────────────
+    this.createPanel(14, 14, 160, 38);
+    this.add.text(22, 20, '💰', { fontSize: '20px' }).setScrollFactor(0).setDepth(101);
+    this.goldText = this.add.text(50, 21, 'Gold: 0', {
+      fontSize: '20px',
+      fontFamily: '"Arial Black", Arial',
       color: '#ffd700',
       stroke: '#000000',
       strokeThickness: 2,
-    });
-    this.goldText.setScrollFactor(0);
-    this.goldText.setDepth(100);
+    }).setScrollFactor(0).setDepth(101);
 
-    // Top center - Wave progress
-    this.waveText = this.add.text(screenWidth / 2, 20, 'Wave: 0 / 20', {
-      fontSize: '24px',
-      fontFamily: 'Arial',
+    // ── Wave + enemy count (top-center) ───────────────────────────
+    this.createPanel(W / 2 - 110, 14, 220, 38);
+    this.waveText = this.add.text(W / 2, 22, 'Wave 0 / 20', {
+      fontSize: '18px',
+      fontFamily: '"Arial Black", Arial',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 2,
-    });
-    this.waveText.setOrigin(0.5, 0);
-    this.waveText.setScrollFactor(0);
-    this.waveText.setDepth(100);
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101);
 
-    // Top right - HP
-    this.hpText = this.add.text(screenWidth - 20, 20, 'Base HP: 100', {
-      fontSize: '24px',
+    // ── Base HP (top-right) ────────────────────────────────────────
+    const hpPanelW = 210;
+    this.createPanel(W - hpPanelW - 14, 14, hpPanelW, 38);
+    this.add.text(W - hpPanelW - 4, 20, '🏰', { fontSize: '20px' }).setScrollFactor(0).setDepth(101);
+    this.hpText = this.add.text(W - hpPanelW + 22, 21, 'Base HP: 100', {
+      fontSize: '17px',
       fontFamily: 'Arial',
-      color: '#ff4444',
+      color: '#44ff44',
       stroke: '#000000',
       strokeThickness: 2,
-    });
-    this.hpText.setOrigin(1, 0);
-    this.hpText.setScrollFactor(0);
-    this.hpText.setDepth(100);
+    }).setScrollFactor(0).setDepth(101);
 
-    // Player class icon (bottom left)
-    this.classIcon = this.createClassIcon(60, screenHeight - 60);
-    this.classIcon.setScrollFactor(0);
-    this.classIcon.setDepth(100);
-    this.classIcon.setVisible(true); // Visible by default, will update when we get player class
+    // HP bar (just below top bar)
+    this.hpBarFill = this.add.graphics().setScrollFactor(0).setDepth(101);
 
-    // Start Wave button (center bottom) - only visible during prep
-    this.startWaveButton = this.createStartWaveButton(screenWidth / 2, screenHeight - 80);
-    this.startWaveButton.setScrollFactor(0);
-    this.startWaveButton.setDepth(100);
+    // ── Enemy count (below wave text) ─────────────────────────────
+    this.enemyCountText = this.add.text(W / 2, 52, '', {
+      fontSize: '13px',
+      fontFamily: 'Arial',
+      color: '#ff9966',
+      stroke: '#000000',
+      strokeThickness: 1,
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101);
+
+    // ── Class icon (bottom-left) ───────────────────────────────────
+    this.classIcon = this.createClassIcon(70, H - 70);
+    this.classIcon.setScrollFactor(0).setDepth(101);
+
+    // ── Start Wave button (center-bottom) ─────────────────────────
+    this.startWaveButton = this.createStartWaveButton(W / 2, H - 60);
+    this.startWaveButton.setScrollFactor(0).setDepth(101);
     this.startWaveButton.setVisible(false);
 
-    // Center - Phase name (for transitions)
-    this.phaseText = this.add.text(screenWidth / 2, 80, '', {
-      fontSize: '32px',
-      fontFamily: 'Arial',
+    // ── Phase announcement (center) ───────────────────────────────
+    this.phaseText = this.add.text(W / 2, 90, '', {
+      fontSize: '38px',
+      fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#00ff88',
       stroke: '#000000',
-      strokeThickness: 4,
-    });
-    this.phaseText.setOrigin(0.5, 0);
-    this.phaseText.setScrollFactor(0);
-    this.phaseText.setDepth(100);
-    this.phaseText.setVisible(false);
+      strokeThickness: 5,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(102).setVisible(false);
 
-    // Prep timer
-    this.prepTimerText = this.add.text(screenWidth / 2, 50, '', {
-      fontSize: '20px',
+    // ── Prep timer ────────────────────────────────────────────────
+    this.prepTimerText = this.add.text(W / 2, 56, '', {
+      fontSize: '15px',
       fontFamily: 'Arial',
       color: '#88ffff',
       stroke: '#000000',
       strokeThickness: 2,
-    });
-    this.prepTimerText.setOrigin(0.5, 0);
-    this.prepTimerText.setScrollFactor(0);
-    this.prepTimerText.setDepth(100);
-    this.prepTimerText.setVisible(false);
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101).setVisible(false);
   }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Panel helper
+  // ─────────────────────────────────────────────────────────────────
+
+  private createPanel(x: number, y: number, w: number, h: number): Phaser.GameObjects.Graphics {
+    const g = this.add.graphics();
+    g.fillStyle(0x0a0a20, 0.82);
+    g.fillRoundedRect(x, y, w, h, 8);
+    g.lineStyle(1, 0x6666aa, 0.9);
+    g.strokeRoundedRect(x, y, w, h, 8);
+    g.setScrollFactor(0).setDepth(100);
+    return g;
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Class icon
+  // ─────────────────────────────────────────────────────────────────
 
   private createClassIcon(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
 
-    // Background circle
-    const bg = this.add.circle(0, 0, 30, 0x333333);
-    bg.setStrokeStyle(3, 0xffffff);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0a20, 0.85);
+    bg.fillCircle(0, 0, 36);
+    bg.lineStyle(3, 0x6666aa, 1);
+    bg.strokeCircle(0, 0, 36);
 
-    // Element icon (inner circle)
-    const icon = this.add.circle(0, 0, 20, 0xffffff);
+    const icon = this.add.text(0, -4, '⚔', {
+      fontSize: '28px',
+    }).setOrigin(0.5);
 
-    // Class name text below
-    const nameText = this.add.text(0, 40, '', {
-      fontSize: '14px',
+    const nameText = this.add.text(0, 44, 'Choose Class', {
+      fontSize: '11px',
       fontFamily: 'Arial',
-      color: '#ffffff',
+      color: '#aaaaaa',
     }).setOrigin(0.5);
 
     container.add([bg, icon, nameText]);
-
-    // Store references for updating (using any to avoid Phaser type issues)
-    (container as unknown as { bgCircle: unknown }).bgCircle = bg;
-    (container as unknown as { iconCircle: unknown }).iconCircle = icon;
-    (container as unknown as { nameTextObj: unknown }).nameTextObj = nameText;
+    (container as unknown as { bgGfx: Phaser.GameObjects.Graphics }).bgGfx = bg;
+    (container as unknown as { iconText: Phaser.GameObjects.Text }).iconText = icon;
+    (container as unknown as { nameTextObj: Phaser.GameObjects.Text }).nameTextObj = nameText;
 
     return container;
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // Start Wave button
+  // ─────────────────────────────────────────────────────────────────
+
   private createStartWaveButton(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
 
-    const buttonWidth = 180;
-    const buttonHeight = 50;
+    // Try to use Tiny Swords button if available, else draw our own
+    const hasTsBtn = this.textures.exists('ui_btn_blue_regular');
 
-    // Button background
-    const bg = this.add.rectangle(0, 0, buttonWidth, buttonHeight, 0x00aa66);
-    bg.setStrokeStyle(2, 0x00ff88);
+    let bg: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
+    if (hasTsBtn) {
+      const img = this.add.image(0, 0, 'ui_btn_blue_regular');
+      img.setScale(0.65);
+      bg = img;
+      bg.setInteractive({ useHandCursor: true });
 
-    // Button text
-    const text = this.add.text(0, 0, 'START WAVE', {
-      fontSize: '22px',
-      fontFamily: 'Arial',
+      bg.on('pointerover', () => { (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_pressed'); });
+      bg.on('pointerout',  () => { (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_regular'); });
+      bg.on('pointerdown', () => { (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_pressed'); });
+      bg.on('pointerup',   () => {
+        (bg as Phaser.GameObjects.Image).setTexture('ui_btn_blue_regular');
+        this.handleStartWave();
+      });
+    } else {
+      const gfx = this.add.graphics();
+      gfx.fillStyle(0x0055cc, 1);
+      gfx.fillRoundedRect(-90, -24, 180, 48, 10);
+      gfx.lineStyle(2, 0x4488ff, 1);
+      gfx.strokeRoundedRect(-90, -24, 180, 48, 10);
+      bg = gfx;
+      const hitArea = this.add.rectangle(0, 0, 180, 48, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+      hitArea.on('pointerover', () => { gfx.clear(); gfx.fillStyle(0x0077ee, 1); gfx.fillRoundedRect(-90, -24, 180, 48, 10); });
+      hitArea.on('pointerout', () => { gfx.clear(); gfx.fillStyle(0x0055cc, 1); gfx.fillRoundedRect(-90, -24, 180, 48, 10); gfx.lineStyle(2, 0x4488ff, 1); gfx.strokeRoundedRect(-90, -24, 180, 48, 10); });
+      hitArea.on('pointerup', () => { this.handleStartWave(); });
+      container.add(hitArea);
+    }
+
+    const label = this.add.text(0, 0, '⚔  START WAVE', {
+      fontSize: '20px',
+      fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffffff',
+      stroke: '#002244',
+      strokeThickness: 3,
     }).setOrigin(0.5);
 
-    container.add([bg, text]);
-
-    // Button interactivity
-    bg.setInteractive({ useHandCursor: true });
-
-    bg.on('pointerover', () => {
-      bg.setFillStyle(0x00cc77);
-    });
-
-    bg.on('pointerout', () => {
-      bg.setFillStyle(0x00aa66);
-    });
-
-    bg.on('pointerup', () => {
-      bg.setFillStyle(0x00aa66);
-      this.handleStartWave();
-    });
-
-    (container as unknown as { background: Phaser.GameObjects.Rectangle }).background = bg;
+    container.add([bg, label]);
+    (container as unknown as { label: Phaser.GameObjects.Text }).label = label;
 
     return container;
   }
@@ -188,37 +225,65 @@ export class HudScene extends Phaser.Scene {
     const gameClient = this.registry.get('gameClient') as GameClient;
     if (gameClient) {
       gameClient.startWave();
+      // Pulse animation
+      this.tweens.add({
+        targets: this.startWaveButton,
+        scaleX: 1.15,
+        scaleY: 1.15,
+        duration: 100,
+        yoyo: true,
+        ease: 'Power2',
+      });
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // State sync
+  // ─────────────────────────────────────────────────────────────────
+
   syncState(state: GameState): void {
-    // Update gold
-    this.goldText.setText(`Gold: ${state.economy.gold}`);
-
-    // Update wave progress indicator
-    const waveDisplay = state.wave === 0 ? 'Wave: Start' : `Wave: ${state.wave} / ${state.maxWaves}`;
-    this.waveText.setText(waveDisplay);
-
-    // Update HP
-    const hpPercent = state.baseHp / state.maxBaseHp;
-    if (hpPercent > 0.6) {
-      this.hpText.setColor('#44ff44');
-    } else if (hpPercent > 0.3) {
-      this.hpText.setColor('#ffff44');
-    } else {
-      this.hpText.setColor('#ff4444');
+    // Gold — pulse on change
+    const newGold = state.economy.gold;
+    if (this.goldText.text !== `Gold: ${newGold}`) {
+      this.goldText.setText(`Gold: ${newGold}`);
+      this.tweens.add({ targets: this.goldText, scaleX: 1.2, scaleY: 1.2, yoyo: true, duration: 150 });
     }
-    this.hpText.setText(`Base HP: ${state.baseHp} / ${state.maxBaseHp}`);
 
-    // Update player class icon from game state
+    // Wave
+    this.waveText.setText(state.wave === 0 ? 'Wave: Ready' : `Wave ${state.wave} / ${state.maxWaves}`);
+
+    // Enemy count
+    const alive = Object.values(state.enemies).filter((e) => e.alive).length;
+    this.enemyCountText.setText(alive > 0 ? `👾 ${alive} enemies` : '');
+
+    // HP
+    const hpRatio = state.baseHp / state.maxBaseHp;
+    const hpColor = hpRatio > 0.6 ? '#44ff44' : hpRatio > 0.3 ? '#ffee22' : '#ff3333';
+    this.hpText.setColor(hpColor);
+    this.hpText.setText(`🏰 ${state.baseHp} / ${state.maxBaseHp}`);
+
+    // HP bar
+    const W = this.cameras.main.width;
+    const panelW = 210;
+    this.hpBarFill.clear();
+    this.hpBarFill.fillStyle(0x000000, 0.5);
+    this.hpBarFill.fillRect(W - panelW - 14, 52, panelW, 6);
+    const fillColor = hpRatio > 0.6 ? 0x44ff44 : hpRatio > 0.3 ? 0xffee22 : 0xff3333;
+    this.hpBarFill.fillStyle(fillColor, 1);
+    this.hpBarFill.fillRect(W - panelW - 14, 52, panelW * hpRatio, 6);
+
+    // Base damage shake
+    if (this.prevBaseHp !== -1 && state.baseHp < this.prevBaseHp) {
+      this.showDamageIndicator(state.baseHp, this.prevBaseHp);
+    }
+    this.prevBaseHp = state.baseHp;
+
     this.updatePlayerClass(state);
-
-    // Update phase
     this.updatePhaseDisplay(state.phase);
 
-    // Show/hide Start Wave button during prep phase
+    // Start wave button visibility
     if (state.phase === 'prep') {
-      this.prepTimerText.setText(`Prep Time: ${Math.ceil(state.prepTimeRemaining)}s`);
+      this.prepTimerText.setText(`⏱ Prep: ${Math.ceil(state.prepTimeRemaining)}s`);
       this.prepTimerText.setVisible(true);
       this.startWaveButton.setVisible(true);
     } else {
@@ -226,15 +291,33 @@ export class HudScene extends Phaser.Scene {
       this.startWaveButton.setVisible(false);
     }
 
-    // Handle victory/defeat overlay
     if (state.phase === 'victory' || state.phase === 'defeat') {
       this.showGameOverOverlay(state.phase);
     }
   }
 
+  private showDamageIndicator(currentHp: number, prevHp: number): void {
+    const dmg = prevHp - currentHp;
+    const W = this.cameras.main.width;
+    const dmgText = this.add.text(W - 30, 65, `-${dmg}`, {
+      fontSize: '26px',
+      fontFamily: '"Arial Black", Arial',
+      color: '#ff3333',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(103);
+
+    this.tweens.add({
+      targets: dmgText,
+      y: 30,
+      alpha: 0,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => { dmgText.destroy(); },
+    });
+  }
+
   private updatePlayerClass(state: GameState): void {
-    // Find the local player's element class from game state
-    // For now, get first connected player
     const players = Object.values(state.players);
     const localPlayer = players.find((p) => p.connected);
 
@@ -242,153 +325,142 @@ export class HudScene extends Phaser.Scene {
       this.playerElement = localPlayer.elementClass;
       const color = ELEMENT_COLORS[this.playerElement];
       const name = ELEMENT_NAMES[this.playerElement];
+      const icon = ELEMENT_ICONS[this.playerElement];
 
-      // Update class icon
-      const icon = (this.classIcon as unknown as { iconCircle: unknown }).iconCircle as unknown as { setFillStyle(color: number): void };
-      const nameTextObj = (this.classIcon as unknown as { nameTextObj: unknown }).nameTextObj as unknown as { setText(text: string): void };
-      const bgCircle = (this.classIcon as unknown as { bgCircle: unknown }).bgCircle as unknown as { setStrokeStyle(width: number, color: number): void };
+      const bg = (this.classIcon as unknown as { bgGfx: Phaser.GameObjects.Graphics }).bgGfx;
+      const iconText = (this.classIcon as unknown as { iconText: Phaser.GameObjects.Text }).iconText;
+      const nameText = (this.classIcon as unknown as { nameTextObj: Phaser.GameObjects.Text }).nameTextObj;
 
-      icon.setFillStyle(color);
-      bgCircle.setStrokeStyle(3, color);
-      nameTextObj.setText(name);
-      this.classIcon.setVisible(true);
+      bg.clear();
+      bg.fillStyle(0x0a0a20, 0.85);
+      bg.fillCircle(0, 0, 36);
+      bg.lineStyle(3, color, 1);
+      bg.strokeCircle(0, 0, 36);
+
+      iconText.setText(icon);
+      nameText.setText(name);
+      nameText.setColor('#' + color.toString(16).padStart(6, '0'));
+
+      // Spin animation on class select
+      this.tweens.add({
+        targets: this.classIcon,
+        angle: 360,
+        duration: 500,
+        ease: 'Power2.Out',
+      });
     }
   }
 
   private showGameOverOverlay(phase: 'victory' | 'defeat'): void {
-    const screenWidth = this.cameras.main.width;
-    const screenHeight = this.cameras.main.height;
-
-    // Semi-transparent overlay
-    const overlay = this.add.rectangle(
-      screenWidth / 2,
-      screenHeight / 2,
-      screenWidth,
-      screenHeight,
-      0x000000,
-      0.7
-    );
-    overlay.setScrollFactor(0);
-    overlay.setDepth(200);
-
-    // Game over text
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
     const isVictory = phase === 'victory';
-    const resultText = this.add.text(
-      screenWidth / 2,
-      screenHeight / 2 - 50,
-      isVictory ? 'VICTORY!' : 'DEFEAT',
-      {
-        fontSize: '64px',
-        fontFamily: 'Arial',
-        fontStyle: 'bold',
-        color: isVictory ? '#ffd700' : '#ff0000',
-        stroke: '#000000',
-        strokeThickness: 6,
-      }
-    );
-    resultText.setOrigin(0.5);
-    resultText.setScrollFactor(0);
-    resultText.setDepth(201);
 
-    // Restart hint
-    this.add.text(
-      screenWidth / 2,
-      screenHeight / 2 + 30,
-      'Refresh to play again',
-      {
-        fontSize: '24px',
-        fontFamily: 'Arial',
-        color: '#aaaaaa',
-      }
-    ).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+    // Prevent duplicate overlays
+    if (this.data.get('gameOverShown')) return;
+    this.data.set('gameOverShown', true);
+
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75)
+      .setScrollFactor(0).setDepth(200);
+
+    // Animated text
+    const resultText = this.add.text(W / 2, H / 2 - 60, isVictory ? '🏆 VICTORY!' : '💀 DEFEAT', {
+      fontSize: '72px',
+      fontFamily: '"Arial Black", Arial',
+      fontStyle: 'bold',
+      color: isVictory ? '#ffd700' : '#ff3333',
+      stroke: '#000000',
+      strokeThickness: 7,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+    resultText.setScale(0);
+    this.tweens.add({
+      targets: resultText,
+      scale: 1,
+      duration: 400,
+      ease: 'Back.Out',
+    });
+
+    this.add.text(W / 2, H / 2 + 20, isVictory ? 'All waves survived!' : 'The base has fallen...', {
+      fontSize: '24px',
+      fontFamily: 'Arial',
+      color: '#cccccc',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+
+    this.add.text(W / 2, H / 2 + 70, 'Refresh to play again', {
+      fontSize: '18px',
+      fontFamily: 'Arial',
+      color: '#888888',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+
+    // Particles
+    if (isVictory) {
+      this.spawnVictoryParticles(W, H);
+    }
+  }
+
+  private spawnVictoryParticles(W: number, H: number): void {
+    const colors = [0xffd700, 0xff8800, 0xffff00, 0x00ff88, 0xff44ff];
+    for (let i = 0; i < 60; i++) {
+      this.time.delayedCall(i * 50, () => {
+        const x = Math.random() * W;
+        const circle = this.add.circle(x, H + 20, 4 + Math.random() * 6, colors[Math.floor(Math.random() * colors.length)])
+          .setScrollFactor(0).setDepth(202);
+        this.tweens.add({
+          targets: circle,
+          y: -20,
+          x: x + (Math.random() - 0.5) * 100,
+          alpha: 0,
+          duration: 1500 + Math.random() * 1500,
+          ease: 'Linear',
+          onComplete: () => { circle.destroy(); },
+        });
+      });
+    }
   }
 
   private updatePhaseDisplay(phase: GamePhase): void {
-    let displayText = '';
-    let color = '#ffffff';
+    const phaseMessages: Partial<Record<GamePhase, { text: string; color: string }>> = {
+      prep:       { text: '🛡 PREP PHASE',    color: '#88ffff' },
+      combat:     { text: '⚔ WAVE START!',   color: '#ff6644' },
+      post_wave:  { text: '✅ WAVE CLEARED!', color: '#88ff88' },
+      victory:    { text: '🏆 VICTORY!',      color: '#ffd700' },
+      defeat:     { text: '💀 DEFEAT',        color: '#ff3333' },
+    };
 
-    switch (phase) {
-      case 'lobby':
-        displayText = 'LOBBY';
-        color = '#888888';
-        break;
-      case 'class_select':
-        displayText = 'CLASS SELECT';
-        color = '#8888ff';
-        break;
-      case 'prep':
-        displayText = 'PREP PHASE';
-        color = '#88ffff';
-        break;
-      case 'combat':
-        displayText = 'COMBAT';
-        color = '#ff4444';
-        break;
-      case 'post_wave':
-        displayText = 'WAVE COMPLETE';
-        color = '#88ff88';
-        break;
-      case 'victory':
-        displayText = 'VICTORY!';
-        color = '#ffd700';
-        break;
-      case 'defeat':
-        displayText = 'DEFEAT';
-        color = '#ff0000';
-        break;
-    }
+    const msg = phaseMessages[phase];
+    if (!msg) return;
 
-    if (displayText) {
-      this.phaseText.setText(displayText);
-      this.phaseText.setColor(color);
-      this.phaseText.setVisible(true);
+    // Don't re-announce same phase
+    if (this.phaseText.text === msg.text && this.phaseText.visible) return;
 
-      // Fade out after a few seconds (unless combat)
-      if (phase !== 'combat' && phase !== 'prep') {
-        this.tweens.add({
-          targets: this.phaseText,
-          alpha: 0,
-          duration: 2000,
-          delay: 2000,
-          onComplete: () => {
-            this.phaseText.setVisible(false);
-            this.phaseText.setAlpha(1);
-          },
-        });
-      }
+    this.phaseText.setText(msg.text);
+    this.phaseText.setColor(msg.color);
+    this.phaseText.setScale(0);
+    this.phaseText.setAlpha(1);
+    this.phaseText.setVisible(true);
+
+    this.tweens.add({
+      targets: this.phaseText,
+      scale: 1,
+      duration: 300,
+      ease: 'Back.Out',
+    });
+
+    if (phase !== 'combat' && phase !== 'prep') {
+      this.tweens.add({
+        targets: this.phaseText,
+        alpha: 0,
+        duration: 1500,
+        delay: 2000,
+        onComplete: () => {
+          this.phaseText.setVisible(false);
+          this.phaseText.setAlpha(1);
+        },
+      });
     }
   }
 
-  // Show damage indicator on base
   showBaseDamage(damage: number): void {
-    const screenWidth = this.cameras.main.width;
-    const screenHeight = this.cameras.main.height;
-
-    const damageText = this.add.text(
-      screenWidth - 20,
-      60,
-      `-${damage}`,
-      {
-        fontSize: '28px',
-        fontFamily: 'Arial',
-        fontStyle: 'bold',
-        color: '#ff0000',
-        stroke: '#000000',
-        strokeThickness: 3,
-      }
-    );
-    damageText.setOrigin(1, 0);
-    damageText.setScrollFactor(0);
-    damageText.setDepth(100);
-
-    this.tweens.add({
-      targets: damageText,
-      y: 20,
-      alpha: 0,
-      duration: 1000,
-      onComplete: () => {
-        damageText.destroy();
-      },
-    });
+    this.showDamageIndicator(0, damage);
   }
 }

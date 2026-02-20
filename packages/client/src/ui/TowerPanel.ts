@@ -71,77 +71,133 @@ export class TowerPanel {
   ): Phaser.GameObjects.Container {
     const container = this.scene.add.container(0, y);
     const itemWidth = this.panelWidth - 20;
+    const iH = this.itemHeight - 5;
 
-    // Item background
-    const bg = this.scene.add.rectangle(0, 0, itemWidth, this.itemHeight - 5, 0x2a2a3e);
-    bg.setStrokeStyle(1, canAfford ? 0x00aa66 : 0x664444);
+    const elementColors: Record<ElementType | 'shared', number> = {
+      fire:   0xff4400,
+      water:  0x0088ff,
+      ice:    0x88ccff,
+      poison: 0x44cc44,
+      shared: 0xaaaaaa,
+    };
+    const elementBuildingKeys: Record<ElementType | 'shared', string> = {
+      fire:   'building_yellow',
+      water:  'building_blue',
+      ice:    'building_black',
+      poison: 'building_purple',
+      shared: 'building_blue',
+    };
+    const elementSoldierKeys: Record<ElementType | 'shared', string> = {
+      fire:   'tower_fire',
+      water:  'tower_water',
+      ice:    'tower_ice',
+      poison: 'tower_poison',
+      shared: 'tower_shared',
+    };
 
-    // Tower name
-    const nameColor = canAfford ? '#ffffff' : '#666666';
-    const name = this.scene.add.text(-itemWidth / 2 + 10, -20, config.name, {
-      fontSize: '16px',
-      fontFamily: 'Arial',
+    const elementColor = elementColors[config.class] ?? 0xaaaaaa;
+    const alpha = canAfford ? 1 : 0.45;
+
+    // ── Item background ───────────────────────────────────────────
+    const bg = this.scene.add.graphics();
+    const drawBg = (hover: boolean, selected: boolean) => {
+      bg.clear();
+      const fill = selected ? 0x1e2a3a : hover ? 0x222238 : 0x181828;
+      bg.fillStyle(fill, 1);
+      bg.fillRoundedRect(-itemWidth / 2, -iH / 2, itemWidth, iH, 6);
+      const borderColor = selected ? elementColor : canAfford ? (hover ? elementColor : 0x333355) : 0x332222;
+      const borderAlpha = selected ? 1 : canAfford ? (hover ? 0.9 : 0.5) : 0.3;
+      bg.lineStyle(selected ? 2 : 1, borderColor, borderAlpha);
+      bg.strokeRoundedRect(-itemWidth / 2, -iH / 2, itemWidth, iH, 6);
+    };
+    drawBg(false, false);
+
+    // ── Building thumbnail ────────────────────────────────────────
+    const buildingKey = elementBuildingKeys[config.class] ?? 'building_blue';
+    const thumbSize = 38;
+    const thumbX = -itemWidth / 2 + thumbSize / 2 + 4;
+    let thumb: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
+    if (this.scene.textures.exists(buildingKey)) {
+      thumb = this.scene.add.image(thumbX, 0, buildingKey);
+      (thumb as Phaser.GameObjects.Image).setScale(0.13);
+      (thumb as Phaser.GameObjects.Image).setAlpha(alpha);
+    } else {
+      thumb = this.scene.add.rectangle(thumbX, 0, thumbSize, thumbSize - 10, elementColor, alpha * 0.5);
+    }
+
+    // Soldier sprite (frame 0)
+    const soldierKey = elementSoldierKeys[config.class] ?? 'tower_shared';
+    let soldierThumb: Phaser.GameObjects.Sprite | null = null;
+    if (this.scene.textures.exists(soldierKey)) {
+      soldierThumb = this.scene.add.sprite(thumbX - 2, -4, soldierKey, 0);
+      soldierThumb.setScale(2.5);
+      soldierThumb.setAlpha(alpha);
+    }
+
+    // ── Tower name ────────────────────────────────────────────────
+    const nameColor = canAfford ? '#ffffff' : '#555566';
+    const name = this.scene.add.text(thumbSize / 2 - 6, -14, config.name, {
+      fontSize: '14px',
+      fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: nameColor,
     });
 
-    // Cost
-    const costColor = canAfford ? '#ffd700' : '#884444';
-    const cost = this.scene.add.text(-itemWidth / 2 + 10, 5, `${config.costGold}g`, {
-      fontSize: '14px',
+    // ── Cost ──────────────────────────────────────────────────────
+    const costColor = canAfford ? '#ffd700' : '#664444';
+    const cost = this.scene.add.text(thumbSize / 2 - 6, 4, `💰 ${config.costGold}g`, {
+      fontSize: '12px',
       fontFamily: 'Arial',
       color: costColor,
     });
 
-    // Element indicator
-    const elementColors: Record<ElementType | 'shared', number> = {
-      fire: 0xff4400,
-      water: 0x0088ff,
-      ice: 0x88ccff,
-      poison: 0x44cc44,
-      shared: 0xaaaaaa,
-    };
-    const elementColor = elementColors[config.class] || 0xaaaaaa;
-    const elementDot = this.scene.add.circle(itemWidth / 2 - 15, 0, 8, elementColor);
+    // ── Element dot (right edge) ──────────────────────────────────
+    const dot = this.scene.add.circle(itemWidth / 2 - 10, 0, 5, elementColor, alpha);
 
-    container.add([bg, name, cost, elementDot]);
+    const children: Phaser.GameObjects.GameObject[] = [bg, thumb, name, cost, dot];
+    if (soldierThumb) children.splice(2, 0, soldierThumb);
+    container.add(children);
 
-    // Make interactive if affordable
+    // ── Interactivity ─────────────────────────────────────────────
+    const hitArea = this.scene.add.rectangle(0, 0, itemWidth, iH, 0, 0)
+      .setInteractive({ useHandCursor: canAfford });
+    container.add(hitArea);
+
     if (canAfford) {
-      bg.setInteractive({ useHandCursor: true });
-
-      bg.on('pointerover', () => {
-        bg.setFillStyle(0x3a3a4e);
-      });
-
-      bg.on('pointerout', () => {
-        bg.setFillStyle(0x2a2a3e);
-      });
-
-      bg.on('pointerdown', () => {
+      hitArea.on('pointerover', () => { drawBg(true, this.selectedTower === config.id); });
+      hitArea.on('pointerout',  () => { drawBg(false, this.selectedTower === config.id); });
+      hitArea.on('pointerdown', () => {
         this.selectTower(config.id, container);
+        drawBg(true, true);
       });
     }
 
-    (container as unknown as { bgRect: Phaser.GameObjects.Rectangle }).bgRect = bg;
+    (container as unknown as { bgGfx: Phaser.GameObjects.Graphics }).bgGfx = bg;
+    (container as unknown as { drawBg: (hover: boolean, sel: boolean) => void }).drawBg = drawBg;
+    (container as unknown as { bgRect: Phaser.GameObjects.Rectangle }).bgRect =
+      this.scene.add.rectangle(0, 0, 0, 0); // legacy compat shim
     (container as unknown as { configId: string }).configId = config.id;
 
     return container;
   }
 
-  private selectTower(configId: string, container: Phaser.GameObjects.Container): void {
-    // Deselect previous
+  private selectTower(configId: string, _container: Phaser.GameObjects.Container): void {
+    // Deselect all
     this.towerItemContainers.forEach((item) => {
-      const bg = (item as unknown as { bgRect: Phaser.GameObjects.Rectangle }).bgRect;
-      bg.setStrokeStyle(1, 0x444466);
+      const draw = (item as unknown as { drawBg: (hover: boolean, sel: boolean) => void }).drawBg;
+      if (draw) draw(false, false);
     });
 
     // Select new
     this.selectedTower = configId;
-    const bg = (container as unknown as { bgRect: Phaser.GameObjects.Rectangle }).bgRect;
-    bg.setStrokeStyle(2, 0x00ff88);
+    const found = this.towerItemContainers.find(
+      (item) => (item as unknown as { configId: string }).configId === configId
+    );
+    if (found) {
+      const draw = (found as unknown as { drawBg: (hover: boolean, sel: boolean) => void }).drawBg;
+      if (draw) draw(false, true);
+    }
 
-    // Emit callback
     if (this.onSelection) {
       this.onSelection(configId);
     }

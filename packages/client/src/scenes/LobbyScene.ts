@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { GameClient } from '../GameClient';
 
 export class LobbyScene extends Phaser.Scene {
-  private joinEventEmitter: Phaser.Events.EventEmitter | null = null;
   private playerName: string = 'Player';
 
   constructor() {
@@ -10,147 +9,280 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor('#0d0d1a');
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
 
-    const screenWidth = this.cameras.main.width;
-    const screenHeight = this.cameras.main.height;
+    // ── Background ────────────────────────────────────────────────
+    this.cameras.main.setBackgroundColor('#0a0f1a');
 
-    // Title
-    this.add.text(screenWidth / 2, screenHeight * 0.25, 'TOWER DEFENSE', {
-      fontSize: '72px',
-      fontFamily: 'Arial',
+    // Subtle starfield
+    this.createStarfield(W, H);
+
+    // Floating clouds (if loaded)
+    this.addFloatingClouds(W, H);
+
+    // ── Title card ────────────────────────────────────────────────
+    // Backdrop panel
+    const panelG = this.add.graphics();
+    panelG.fillStyle(0x0d1a30, 0.9);
+    panelG.fillRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
+    panelG.lineStyle(2, 0x4466aa, 0.8);
+    panelG.strokeRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
+
+    // Title glow layer
+    const titleGlow = this.add.text(W / 2, H * 0.19 + 2, '⚔  ELEMENT DEFENSE  ⚔', {
+      fontSize: '48px',
+      fontFamily: '"Arial Black", Arial',
+      color: '#002244',
+    }).setOrigin(0.5).setAlpha(0.6);
+
+    const title = this.add.text(W / 2, H * 0.19, '⚔  ELEMENT DEFENSE  ⚔', {
+      fontSize: '48px',
+      fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
-      color: '#00ff88',
-      stroke: '#004422',
-      strokeThickness: 4,
+      color: '#ffd700',
+      stroke: '#442200',
+      strokeThickness: 5,
     }).setOrigin(0.5);
 
-    // Subtitle
-    this.add.text(screenWidth / 2, screenHeight * 0.32, 'Elemental Warfare', {
-      fontSize: '24px',
-      fontFamily: 'Arial',
-      color: '#88aaaa',
-    }).setOrigin(0.5);
+    // Subtle title breathing tween
+    this.tweens.add({
+      targets: [title, titleGlow],
+      scaleX: 1.015,
+      scaleY: 1.015,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
 
-    // Name input label
-    this.add.text(screenWidth / 2, screenHeight * 0.42, 'Enter Your Name', {
+    this.add.text(W / 2, H * 0.26, 'Cooperative Multiplayer Tower Defense', {
       fontSize: '18px',
       fontFamily: 'Arial',
-      color: '#aaaaaa',
+      color: '#8899bb',
+      fontStyle: 'italic',
     }).setOrigin(0.5);
 
-    // Create name input text field (using Phaser text input simulation)
-    const inputBg = this.add.rectangle(screenWidth / 2, screenHeight * 0.48, 220, 45, 0x222233);
-    inputBg.setStrokeStyle(2, 0x00aa66);
+    // ── Element badges ────────────────────────────────────────────
+    const elements = [
+      { icon: '🔥', name: 'Fire',   color: '#ff6644' },
+      { icon: '💧', name: 'Water',  color: '#44aaff' },
+      { icon: '❄',  name: 'Ice',    color: '#aaddff' },
+      { icon: '☠',  name: 'Poison', color: '#66ff44' },
+    ];
+    const badgeY = H * 0.36;
+    const spacing = 130;
+    const startX = W / 2 - (elements.length - 1) * spacing / 2;
+    elements.forEach((el, i) => {
+      const bx = startX + i * spacing;
+      const bg = this.add.graphics();
+      bg.fillStyle(0x0d1a30, 0.8);
+      bg.fillCircle(bx, badgeY, 32);
+      bg.lineStyle(2, Phaser.Display.Color.HexStringToColor(el.color).color, 0.9);
+      bg.strokeCircle(bx, badgeY, 32);
 
-    const nameText = this.add.text(screenWidth / 2, screenHeight * 0.48, 'Player', {
-      fontSize: '20px',
-      fontFamily: 'Arial',
+      this.add.text(bx, badgeY - 6, el.icon, { fontSize: '26px' }).setOrigin(0.5);
+      this.add.text(bx, badgeY + 22, el.name, { fontSize: '11px', fontFamily: 'Arial', color: el.color }).setOrigin(0.5);
+
+      // Float animation with offset per element
+      this.tweens.add({
+        targets: [bg],
+        y: badgeY - 5,
+        duration: 1500 + i * 200,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+    });
+
+    // ── Name input ────────────────────────────────────────────────
+    this.add.text(W / 2, H * 0.49, 'PLAYER NAME', {
+      fontSize: '13px',
+      fontFamily: '"Arial Black", Arial',
+      color: '#7788aa',
+      letterSpacing: 4,
+    }).setOrigin(0.5);
+
+    const inputBg = this.add.graphics();
+    const inputX = W / 2 - 120;
+    const inputY = H * 0.52;
+    inputBg.fillStyle(0x0d1a30, 0.9);
+    inputBg.fillRoundedRect(inputX, inputY, 240, 44, 10);
+    inputBg.lineStyle(2, 0x224466, 1);
+    inputBg.strokeRoundedRect(inputX, inputY, 240, 44, 10);
+
+    const nameText = this.add.text(W / 2, inputY + 22, this.playerName, {
+      fontSize: '22px',
+      fontFamily: '"Arial Black", Arial',
       color: '#ffffff',
     }).setOrigin(0.5);
 
-    // Make it interactive for editing
-    inputBg.setInteractive({ useHandCursor: true });
+    // Cursor blink
+    const cursor = this.add.text(W / 2 + nameText.width / 2 + 2, inputY + 22, '|', {
+      fontSize: '22px', fontFamily: 'Arial', color: '#00ff88',
+    }).setOrigin(0, 0.5);
+    this.tweens.add({
+      targets: cursor,
+      alpha: 0,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+    });
 
-    let isEditing = false;
+    const inputHit = this.add.rectangle(W / 2, inputY + 22, 240, 44, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
 
-    inputBg.on('pointerdown', () => {
-      isEditing = true;
-      // Use browser prompt for name entry
+    inputHit.on('pointerover', () => {
+      inputBg.clear();
+      inputBg.fillStyle(0x0d2244, 0.95);
+      inputBg.fillRoundedRect(inputX, inputY, 240, 44, 10);
+      inputBg.lineStyle(2, 0x00ff88, 1);
+      inputBg.strokeRoundedRect(inputX, inputY, 240, 44, 10);
+    });
+    inputHit.on('pointerout', () => {
+      inputBg.clear();
+      inputBg.fillStyle(0x0d1a30, 0.9);
+      inputBg.fillRoundedRect(inputX, inputY, 240, 44, 10);
+      inputBg.lineStyle(2, 0x224466, 1);
+      inputBg.strokeRoundedRect(inputX, inputY, 240, 44, 10);
+    });
+    inputHit.on('pointerdown', () => {
       const entered = prompt('Enter your name:', this.playerName);
       if (entered && entered.trim()) {
-        this.playerName = entered.trim();
+        this.playerName = entered.trim().slice(0, 16);
         nameText.setText(this.playerName);
-      }
-      isEditing = false;
-    });
-
-    inputBg.on('pointerover', () => {
-      if (!isEditing) {
-        inputBg.setStrokeStyle(2, 0x00ff88);
+        cursor.setX(W / 2 + nameText.width / 2 + 2);
       }
     });
 
-    inputBg.on('pointerout', () => {
-      if (!isEditing) {
-        inputBg.setStrokeStyle(2, 0x00aa66);
-      }
-    });
-
-    // Join button
-    const buttonWidth = 200;
-    const buttonHeight = 60;
-    const buttonX = screenWidth / 2;
-    const buttonY = screenHeight * 0.65;
-
-    const button = this.add.container(buttonX, buttonY);
-
-    // Button background
-    const bg = this.add.rectangle(0, 0, buttonWidth, buttonHeight, 0x00aa66);
-    bg.setStrokeStyle(2, 0x00ff88);
-
-    // Button text
-    const text = this.add.text(0, 0, 'JOIN GAME', {
-      fontSize: '28px',
-      fontFamily: 'Arial',
-      fontStyle: 'bold',
-      color: '#ffffff',
-    }).setOrigin(0.5);
-
-    button.add([bg, text]);
-
-    // Button interactivity
-    bg.setInteractive({ useHandCursor: true });
-
-    bg.on('pointerover', () => {
-      bg.setFillStyle(0x00cc77);
-    });
-
-    bg.on('pointerout', () => {
-      bg.setFillStyle(0x00aa66);
-    });
-
-    bg.on('pointerdown', () => {
-      bg.setFillStyle(0x008855);
-    });
-
-    bg.on('pointerup', () => {
-      bg.setFillStyle(0x00aa66);
+    // ── Join button ───────────────────────────────────────────────
+    const btnY = H * 0.65;
+    const joinBtn = this.createButton(W / 2, btnY, '⚔  JOIN GAME  ⚔', () => {
       this.handleJoinRequest();
     });
+    joinBtn; // reference kept
 
-    // Version text
-    this.add.text(screenWidth / 2, screenHeight - 30, 'v0.1.0', {
-      fontSize: '14px',
+    // ── How to play hint ──────────────────────────────────────────
+    this.add.text(W / 2, H * 0.77, '🎮  Place towers during PREP phase  •  Work together  •  Survive all waves  🎮', {
+      fontSize: '13px',
       fontFamily: 'Arial',
-      color: '#666666',
+      color: '#556677',
+      align: 'center',
     }).setOrigin(0.5);
+
+    // ── Version ───────────────────────────────────────────────────
+    this.add.text(W - 16, H - 16, 'v0.1.0  ·  Element Defense', {
+      fontSize: '12px', fontFamily: 'Arial', color: '#334455',
+    }).setOrigin(1, 1);
+
+    // ── Fade in ───────────────────────────────────────────────────
+    this.cameras.main.fadeIn(500, 0, 0, 0);
+  }
+
+  private createButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Container {
+    const container = this.add.container(x, y);
+
+    const gfx = this.add.graphics();
+    const drawBtn = (hover: boolean) => {
+      gfx.clear();
+      gfx.fillStyle(hover ? 0x006633 : 0x004422, 1);
+      gfx.fillRoundedRect(-110, -28, 220, 56, 12);
+      gfx.lineStyle(2, hover ? 0x00ff88 : 0x008844, 1);
+      gfx.strokeRoundedRect(-110, -28, 220, 56, 12);
+    };
+    drawBtn(false);
+
+    const txt = this.add.text(0, 0, label, {
+      fontSize: '22px',
+      fontFamily: '"Arial Black", Arial',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#002211',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+
+    const hitArea = this.add.rectangle(0, 0, 220, 56, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+
+    hitArea.on('pointerover', () => { drawBtn(true); });
+    hitArea.on('pointerout', () => { drawBtn(false); });
+    hitArea.on('pointerdown', () => {
+      this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 80, yoyo: true });
+    });
+    hitArea.on('pointerup', () => { onClick(); });
+
+    container.add([gfx, txt, hitArea]);
+    return container;
+  }
+
+  private createStarfield(W: number, H: number): void {
+    const g = this.add.graphics();
+    for (let i = 0; i < 120; i++) {
+      const sx = Math.random() * W;
+      const sy = Math.random() * H;
+      const size = Math.random() < 0.8 ? 1 : 2;
+      const alpha = 0.3 + Math.random() * 0.5;
+      g.fillStyle(0xffffff, alpha);
+      g.fillRect(sx, sy, size, size);
+    }
+    // Twinkle a few
+    for (let i = 0; i < 15; i++) {
+      const star = this.add.circle(
+        Math.random() * W,
+        Math.random() * H,
+        1.5,
+        0xffffff,
+        0.8
+      );
+      this.tweens.add({
+        targets: star,
+        alpha: 0.1,
+        duration: 800 + Math.random() * 1200,
+        yoyo: true,
+        repeat: -1,
+        delay: Math.random() * 2000,
+      });
+    }
+  }
+
+  private addFloatingClouds(W: number, H: number): void {
+    const cloudKeys = ['deco_cloud1', 'deco_cloud2'];
+    for (let i = 0; i < 4; i++) {
+      const key = cloudKeys[i % cloudKeys.length];
+      if (!this.textures.exists(key)) continue;
+      const cloud = this.add.image(
+        Math.random() * W,
+        80 + Math.random() * (H * 0.6),
+        key
+      );
+      cloud.setAlpha(0.08 + Math.random() * 0.07);
+      cloud.setScale(0.5 + Math.random() * 0.4);
+      cloud.setDepth(-1);
+      const speed = 12 + Math.random() * 18;
+      this.tweens.add({
+        targets: cloud,
+        x: W + 200,
+        duration: ((W + 400) / speed) * 1000,
+        repeat: -1,
+        onRepeat: () => { cloud.x = -200; cloud.y = 80 + Math.random() * (H * 0.6); },
+      });
+    }
   }
 
   private async handleJoinRequest(): Promise<void> {
-    // Player name is already set (via prompt in create or default)
-    const playerName = this.playerName;
-
-    // Get GameClient from registry
     const gameClient = this.registry.get('gameClient') as GameClient;
 
-    if (gameClient) {
-      try {
-        // Connect to server
-        await gameClient.connect(playerName);
-        console.log('Connected to server as:', playerName);
-
-        // Transition to class selection
-        this.scene.start('ClassSelectScene');
-      } catch (err) {
-        console.error('Failed to connect:', err);
-        // For demo purposes, still allow progression if server not available
-        this.scene.start('ClassSelectScene');
+    // Fade out
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', async () => {
+      if (gameClient) {
+        try {
+          await gameClient.connect(this.playerName);
+        } catch (err) {
+          console.error('Failed to connect:', err);
+        }
       }
-    } else {
-      // GameClient not found, still allow progression for demo
-      console.warn('GameClient not found in registry');
       this.scene.start('ClassSelectScene');
-    }
+    });
   }
 }
