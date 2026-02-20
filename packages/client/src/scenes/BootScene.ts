@@ -226,6 +226,20 @@ export class BootScene extends Phaser.Scene {
       frameRate: 12, repeat: -1,
     });
 
+    // Hit sparks: frameWidth=8, frameHeight=8 → check actual frame count
+    this.safeCreateAnim(anims, 'fx_hit_sparks', {
+      key: 'fx_hit_sparks',
+      frames: anims.generateFrameNumbers('fx_hit_sparks', { start: 0, end: 7 }),
+      frameRate: 20, repeat: 0,
+    });
+
+    // Tiny Swords fire 2
+    this.safeCreateAnim(anims, 'fx_ts_fire2', {
+      key: 'fx_ts_fire2',
+      frames: anims.generateFrameNumbers('fx_ts_fire2', { start: 0, end: 7 }),
+      frameRate: 12, repeat: -1,
+    });
+
     // Projectile spin (grenade)
     this.safeCreateAnim(anims, 'proj_grenade_spin', {
       key: 'proj_grenade',

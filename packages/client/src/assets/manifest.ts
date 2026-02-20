@@ -85,11 +85,13 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'image', key: 'ui_btn_red_pressed',   path: 'assets/Tiny Swords (Free Pack)/UI Elements/UI Elements/Buttons/BigRedButton_Pressed.png' },
 
   // ── Decorations ─────────────────────────────────────────────────────
-  { kind: 'image', key: 'deco_tree1',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Resources/Wood/Trees/Tree1.png' },
-  { kind: 'image', key: 'deco_tree2',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Resources/Wood/Trees/Tree2.png' },
+  // Tree1/Tree2: 1536×256, 6 trees per sheet, each frame 256×256
+  { kind: 'spritesheet', key: 'deco_tree1', path: 'assets/Tiny Swords (Free Pack)/Terrain/Resources/Wood/Trees/Tree1.png', frameWidth: 256, frameHeight: 256 },
+  { kind: 'spritesheet', key: 'deco_tree2', path: 'assets/Tiny Swords (Free Pack)/Terrain/Resources/Wood/Trees/Tree2.png', frameWidth: 256, frameHeight: 256 },
+  // Bushe1: 1024×128, 8 bushes per sheet, each frame 128×128
+  { kind: 'spritesheet', key: 'deco_bush1', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe1.png', frameWidth: 128, frameHeight: 128 },
   { kind: 'image', key: 'deco_rock1',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock1.png' },
   { kind: 'image', key: 'deco_rock2',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock2.png' },
-  { kind: 'image', key: 'deco_bush1',  path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe1.png' },
   { kind: 'image', key: 'deco_cloud1', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Clouds/Clouds_01.png' },
   { kind: 'image', key: 'deco_cloud2', path: 'assets/Tiny Swords (Free Pack)/Terrain/Decorations/Clouds/Clouds_02.png' },
 ];

@@ -23,10 +23,11 @@ export class LobbyScene extends Phaser.Scene {
 
     // ── Title card ────────────────────────────────────────────────
     // Use Tiny Swords banner image if loaded, otherwise fallback graphics
+    // Banner.png is 704×512 — preserve aspect ratio: scale to fill a nice title panel
     if (this.textures.exists('ui_banner')) {
-      const banner = this.add.image(W / 2, H * 0.19, 'ui_banner');
-      banner.setDisplaySize(620, 130);
-      banner.setAlpha(0.92);
+      const banner = this.add.image(W / 2, H * 0.21, 'ui_banner');
+      banner.setScale(0.5); // 352×256 — centered nicely over the title area
+      banner.setAlpha(0.80);
     } else {
       const panelG = this.add.graphics();
       panelG.fillStyle(0x0d1a30, 0.9);

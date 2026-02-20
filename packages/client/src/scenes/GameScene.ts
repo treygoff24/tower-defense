@@ -273,15 +273,28 @@ export class GameScene extends Phaser.Scene {
   private spawnDecorations(): void {
     this.decorationLayer.clear(true, true);
 
-    const totalW = this.mapWidth * TILE_SIZE;
-    const totalH = this.mapHeight * TILE_SIZE;
+    // Spritesheet-based assets with frame counts (pick random frame to vary appearance)
+    const decoAssets: Array<{ key: string; frames: number; scale: number; isSprite: boolean }> = [
+      { key: 'deco_tree1', frames: 6,  scale: 0.065, isSprite: true  }, // 256×256 frames
+      { key: 'deco_tree2', frames: 6,  scale: 0.065, isSprite: true  },
+      { key: 'deco_bush1', frames: 8,  scale: 0.12,  isSprite: true  }, // 128×128 frames
+      { key: 'deco_rock1', frames: 1,  scale: 0.55,  isSprite: false },
+      { key: 'deco_rock2', frames: 1,  scale: 0.55,  isSprite: false },
+    ];
 
-    const decoAssets = ['deco_tree1', 'deco_tree2', 'deco_rock1', 'deco_rock2', 'deco_bush1'];
+    // Weighted selection: more rocks/bushes at edges, more trees inland
+    const weightedAssets = [
+      ...Array(4).fill(decoAssets[0]), // tree1
+      ...Array(4).fill(decoAssets[1]), // tree2
+      ...Array(5).fill(decoAssets[2]), // bush
+      ...Array(3).fill(decoAssets[3]), // rock1
+      ...Array(2).fill(decoAssets[4]), // rock2
+    ];
 
-    // Scatter 25 decorations on non-path, non-buildzone tiles
+    // Scatter 28 decorations on non-path, non-buildzone tiles
     const placed: Array<{ x: number; y: number }> = [];
     let attempts = 0;
-    while (placed.length < 25 && attempts < 500) {
+    while (placed.length < 28 && attempts < 600) {
       attempts++;
       const tx = Math.floor(Math.random() * this.mapWidth);
       const ty = Math.floor(Math.random() * this.mapHeight);
@@ -289,15 +302,19 @@ export class GameScene extends Phaser.Scene {
       if (placed.some((p) => p.x === tx && p.y === ty)) continue;
 
       placed.push({ x: tx, y: ty });
-      const key = decoAssets[Math.floor(Math.random() * decoAssets.length)];
-      const deco = this.add.image(
-        tx * TILE_SIZE + TILE_SIZE / 2,
-        ty * TILE_SIZE + TILE_SIZE / 2,
-        key
-      );
-      deco.setScale(0.18 + Math.random() * 0.1);
+      const asset = weightedAssets[Math.floor(Math.random() * weightedAssets.length)];
+      const frame = asset.frames > 1 ? Math.floor(Math.random() * asset.frames) : 0;
+      const scaleJitter = asset.scale * (0.85 + Math.random() * 0.3);
+
+      let deco: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+      if (asset.isSprite) {
+        deco = this.add.sprite(tx * TILE_SIZE + TILE_SIZE / 2, ty * TILE_SIZE + TILE_SIZE / 2, asset.key, frame);
+      } else {
+        deco = this.add.image(tx * TILE_SIZE + TILE_SIZE / 2, ty * TILE_SIZE + TILE_SIZE / 2, asset.key);
+      }
+      deco.setScale(scaleJitter);
       deco.setDepth(DECO_DEPTH + ty * 0.01); // Y-sort
-      deco.setAlpha(0.9);
+      deco.setAlpha(0.92);
       this.decorationLayer.add(deco);
     }
   }
@@ -854,7 +871,6 @@ export class GameScene extends Phaser.Scene {
   private spawnExplosion(x: number, y: number, fxKey: string): void {
     if (!this.textures.exists(fxKey)) return;
 
-    const animKey = fxKey.replace('fx_', '');
     const fx = this.add.sprite(x, y, fxKey);
     fx.setDepth(FX_DEPTH);
 
@@ -862,7 +878,8 @@ export class GameScene extends Phaser.Scene {
     const scale = fxKey === 'fx_big_explosion' ? 2 : 1.5;
     fx.setScale(scale);
 
-    fx.play(animKey);
+    // Animation keys are registered with the full 'fx_' prefix
+    fx.play(fxKey);
     fx.once('animationcomplete', () => { fx.destroy(); });
 
     // Also spawn Tiny Swords explosion for extra flair on boss/tank
