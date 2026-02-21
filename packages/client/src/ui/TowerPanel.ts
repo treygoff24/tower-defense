@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TowerConfig, ElementType } from '@td/shared';
 import { TOWER_CONFIGS } from '@td/shared';
+import { Tooltip } from './Tooltip.js';
 
 interface TowerDisplayInfo {
   config: TowerConfig;
@@ -50,12 +51,16 @@ export class TowerPanel {
   /** Track the breathing-glow tween on the selected item */
   private selectionTween: Phaser.Tweens.Tween | null = null;
 
+  /** Shared tooltip instance shown on tower icon hover */
+  private tooltip!: Tooltip;
+
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
     this.container = scene.add.container(x, y);
 
     this.createBackground();
     this.createTitle();
+    this.tooltip = new Tooltip(scene);
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -140,6 +145,68 @@ export class TowerPanel {
       this.towerItems.push({ config, canAfford });
       yOffset += this.itemHeight;
     });
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Tooltip content builder
+  // ────────────────────────────────────────────────────────────────
+
+  /**
+   * Build a multi-line tooltip string for the given tower config.
+   */
+  private buildTooltipText(config: TowerConfig): string {
+    const lines: string[] = [];
+
+    // Header: name
+    lines.push(`[ ${config.name} ]`);
+    lines.push(`Cost: ${config.costGold}g`);
+
+    // Stats
+    const atkSpeed =
+      config.attackPeriodSec > 0
+        ? `${(1 / config.attackPeriodSec).toFixed(2)}/s`
+        : 'N/A';
+    lines.push(`Range: ${config.range} tiles`);
+    lines.push(`Attack Speed: ${atkSpeed}`);
+    lines.push(`Damage: ${config.baseDamage}`);
+
+    // Splash
+    if (config.splashRadius) {
+      lines.push(`Splash: ${config.splashRadius} tiles`);
+    }
+
+    // On-hit effects
+    if (config.onHit && config.onHit.length > 0) {
+      lines.push('');
+      lines.push('Effects:');
+      for (const effect of config.onHit) {
+        if (
+          effect.type === 'dot' &&
+          effect.dps !== undefined &&
+          effect.durationSec !== undefined
+        ) {
+          lines.push(`  Burn: ${effect.dps} dps / ${effect.durationSec}s`);
+        } else if (
+          effect.type === 'status' &&
+          effect.slowPercent !== undefined &&
+          effect.durationSec !== undefined
+        ) {
+          lines.push(`  Slow: ${effect.slowPercent}% / ${effect.durationSec}s`);
+        } else if (effect.type === 'pushback' && effect.value !== undefined) {
+          lines.push(`  Pushback: ${effect.value} tiles`);
+        } else if (effect.type === 'dot' && effect.dps !== undefined) {
+          lines.push(`  DoT: ${effect.dps} dps`);
+        }
+      }
+    }
+
+    // Roles
+    if (config.roles.length > 0) {
+      lines.push('');
+      lines.push(`Roles: ${config.roles.join(', ')}`);
+    }
+
+    return lines.join('\n');
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -317,6 +384,18 @@ export class TowerPanel {
         drawBg(true, true, true);
       });
     }
+
+    // ── Tooltip — always shown on hover ───────────────────────────
+    hitArea.on('pointerover', () => {
+      this.tooltip.setContent(this.buildTooltipText(config));
+      // World position: parent container + item offset, anchor at item top edge
+      const worldX = this.container.x + container.x;
+      const worldY = this.container.y + container.y - iH / 2;
+      this.tooltip.showAt(worldX, worldY);
+    });
+    hitArea.on('pointerout', () => {
+      this.tooltip.hide();
+    });
 
     // Store references for later updates
     (container as unknown as { bgGfx: Phaser.GameObjects.Graphics }).bgGfx = bg;
@@ -510,8 +589,21 @@ export class TowerPanel {
             drawBg(true, true, true);
           });
         } else {
-          hitArea.disableInteractive();
+          hitArea.setInteractive({ useHandCursor: false });
         }
+
+        // Tooltip handlers persist regardless of affordability
+        const iH = this.itemHeight - 5;
+        hitArea.on('pointerover', () => {
+          const tooltipText = this.buildTooltipText(config);
+          this.tooltip.setContent(tooltipText);
+          const worldX = this.container.x + container.x;
+          const worldY = this.container.y + container.y - iH / 2;
+          this.tooltip.showAt(worldX, worldY);
+        });
+        hitArea.on('pointerout', () => {
+          this.tooltip.hide();
+        });
       }
     });
   }
@@ -560,6 +652,8 @@ export class TowerPanel {
 
   destroy(): void {
     this.stopSelectionTween();
+    this.tooltip.hide();
+    this.tooltip.destroy();
     this.container.destroy();
   }
 }
