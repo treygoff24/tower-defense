@@ -9,15 +9,11 @@ export interface ReactionResult {
 }
 
 // Priority order: higher-value reactions first
-const REACTION_PRIORITY: Record<string, number> = {
+const REACTION_PRIORITY: Record<ReactionType, number> = {
   melt: 10,
   conflagration: 9,
   vaporize: 8,
   freeze: 7,
-  shatter: 6,
-  blight: 5,
-  frostburn: 4,
-  steam_burst: 3,
 };
 
 export class ReactionSystem {

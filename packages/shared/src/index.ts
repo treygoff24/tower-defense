@@ -11,7 +11,7 @@ export interface ClassConfig {
 }
 
 export interface PassiveEffect {
-  type: string;
+  type: 'burn_on_hit' | 'soaked_on_hit' | 'cold_on_hit' | 'toxin_on_hit';
   dps?: number;
   durationSec?: number;
 }
@@ -44,7 +44,7 @@ export interface TowerUpgrade {
 }
 
 export interface OnHitEffect {
-  type: string;
+  type: 'dot' | 'status' | 'pushback';
   element?: ElementType;
   dps?: number;
   durationSec?: number;
@@ -69,22 +69,6 @@ export interface TowerState {
 
 // ── Enemy Types ────────────────────────────────────────────
 export type EnemyType = 'grunt' | 'runner' | 'tank' | 'flyer' | 'invisible' | 'caster' | 'boss';
-
-export interface EnemyConfig {
-  type: EnemyType;
-  hp: number;
-  speed: number;
-  armor: number;
-  tags: string[];
-  resistances?: ElementType[];
-  abilities?: EnemyAbility[];
-}
-
-export interface EnemyAbility {
-  type: string;
-  value: number;
-  cooldownSec?: number;
-}
 
 // ── Enemy Instance (runtime state) ─────────────────────────
 export interface EnemyState {
@@ -132,11 +116,7 @@ export interface WaveGroup {
 export type ReactionType =
   | 'vaporize'
   | 'melt'
-  | 'steam_burst'
   | 'freeze'
-  | 'shatter'
-  | 'blight'
-  | 'frostburn'
   | 'conflagration';
 
 export interface ReactionConfig {
@@ -150,7 +130,7 @@ export interface ReactionConfig {
 }
 
 export interface ReactionEffect {
-  type: string;
+  type: 'damage_multiplier' | 'apply_status' | 'aoe_burst';
   value?: number;
   aoeRadius?: number;
   durationSec?: number;
