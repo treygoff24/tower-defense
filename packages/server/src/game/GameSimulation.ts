@@ -262,7 +262,7 @@ export class GameSimulation {
               }
               if (reaction.applyStatus) {
                 enemy.statuses.push({
-                  type: reaction.applyStatus,
+                  type: reaction.applyStatus as 'soaked' | 'burning' | 'cold' | 'frozen' | 'toxin',
                   element: reaction.reaction.triggerElement,
                   stacks: 1,
                   remainingSec: reaction.statusDuration ?? 3,
