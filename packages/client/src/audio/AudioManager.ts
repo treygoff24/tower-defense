@@ -150,10 +150,14 @@ export class AudioManager {
    * Creates a per-event GainNode, registers it with the SoundPool,
    * and calls `fn` with the destination node and the normalised volume factor.
    * The pool may stop the oldest instance if this category is full.
+   *
+   * After `durationMs` the instance is released from the pool so that the
+   * slot is freed for future sounds without waiting for the cap to evict it.
    */
   private playEvent(
     category: string,
-    fn: (dest: GainNode, volumeFactor: number) => void
+    fn: (dest: GainNode, volumeFactor: number) => void,
+    durationMs = 1200
   ): void {
     if (!this.ensureCtx() || this.muted) return;
     const ctx = this.ctx!;
@@ -176,6 +180,13 @@ export class AudioManager {
 
     const volumeFactor = this.pool.acquire(category, instance);
     fn(eventGain, volumeFactor);
+
+    // Release the pool slot once the sound has naturally finished.
+    // durationMs is a generous upper bound covering the longest synthesised
+    // primitives scheduled by fn (see individual playEvent call sites).
+    setTimeout(() => {
+      this.pool.release(category, instance);
+    }, durationMs);
   }
 
   // ─────────────────────────────────────────────────────────────────

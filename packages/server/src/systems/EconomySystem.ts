@@ -1,5 +1,5 @@
 // packages/server/src/systems/EconomySystem.ts
-import { EconomyState, TOWER_SELL_REFUND_PERCENT } from '@td/shared';
+import { EconomyState } from '@td/shared';
 
 const BASE_STARTING_GOLD = 200;
 const BASE_WAVE_BONUS = 40;
@@ -29,10 +29,6 @@ export class EconomySystem {
     if (this.state.gold < amount) return false;
     this.state.gold -= amount;
     return true;
-  }
-
-  refundTower(originalCost: number): void {
-    this.state.gold += Math.floor(originalCost * TOWER_SELL_REFUND_PERCENT);
   }
 
   canAfford(amount: number): boolean {

@@ -72,7 +72,6 @@ export class TowerSystem {
 
     this.towers.set(instanceId, tower);
     this.occupiedTiles.add(this.tileKey(x, y));
-    this.towerInvestment.set(instanceId, config.costGold);
 
     return { ok: true, tower };
   }
@@ -86,8 +85,6 @@ export class TowerSystem {
     if (!upgrade) return { ok: false, reason: 'Already at max tier' };
 
     tower.tier = upgrade.tier;
-    const current = this.towerInvestment.get(instanceId) ?? 0;
-    this.towerInvestment.set(instanceId, current + upgrade.costGold);
 
     return { ok: true, newTier: tower.tier, cost: upgrade.costGold };
   }
@@ -101,7 +98,6 @@ export class TowerSystem {
 
     this.towers.delete(instanceId);
     this.occupiedTiles.delete(this.tileKey(tower.x, tower.y));
-    this.towerInvestment.delete(instanceId);
 
     return { ok: true, goldRefund: refund };
   }

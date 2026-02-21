@@ -43,8 +43,10 @@ function startCombat(sim: GameSimulation, towerId: string) {
   sim.placeTower('p1', towerId, 2, 6);
   sim.startWave();
   (sim as any).spawnQueue = [];
-  // Blocker at (2, 4) — far enough that it won't reach the end, with huge HP
-  spawnStationary(sim, 999999, 2, 4);
+  // Blocker at (2, 0) — outside tower range (distance 6 > range 3) and near
+  // the path start so it won't leak; keeps aliveCount > 0 to prevent the
+  // wave-complete bonus from contaminating gold assertions.
+  spawnStationary(sim, 999999, 2, 0);
 }
 
 describe('GameSimulation — Kill Bounty Gold', () => {
