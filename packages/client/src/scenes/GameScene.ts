@@ -669,16 +669,21 @@ export class GameScene extends Phaser.Scene {
         this.events.emit('tile-clicked', { tileX, tileY, configId: this.selectedTowerId });
       }
     } else if (this.currentPhase === 'prep') {
-      // Check if clicking on a placed tower → show sell panel
+      // Check if clicking on a placed tower → show TowerInspector
       const towerAtTile = this.getTowerAtTile(tileX, tileY);
       if (towerAtTile) {
         const { instanceId, tv } = towerAtTile;
         const cfg = TOWER_CONFIGS[tv.configId];
         const refund = cfg ? Math.round(cfg.costGold * 0.5) : 0;
+        // Look up tier from latest game state
+        const gameClient = this.registry.get('gameClient') as { getLatestState(): { towers: Record<string, { tier: number }> } | null } | undefined;
+        const state = gameClient?.getLatestState();
+        const tier = state?.towers[instanceId]?.tier ?? 1;
         this.events.emit('placed-tower-clicked', {
           instanceId,
           configId: tv.configId,
           refund,
+          tier,
         });
       } else {
         this.events.emit('sell-panel-close');
@@ -1396,25 +1401,30 @@ export class GameScene extends Phaser.Scene {
     // Camera shake and red flash are already handled in update() via state diff
   }
 
-  handleTowerSoldVisual(data: { instanceId: string; goldRefund: number }): void {
+  private handleTowerSoldVisual(data: { instanceId: string; goldRefund: number }): void {
     const tv = this.towers.get(data.instanceId);
-    if (tv) {
-      // Floating gold refund text at tower position
-      this.spawnFloatingText(tv.base.x, tv.base.y - 20, `+${data.goldRefund}g 💰`, 0xffd700, 16);
-      // Dissolve animation
-      this.tweens.add({
-        targets: [tv.base, tv.soldier, tv.aura],
-        alpha: 0,
-        scaleX: 0,
-        scaleY: 0,
-        duration: 300,
-        ease: 'Power2.In',
-        onComplete: () => {
-          this.destroyTowerVisual(tv);
-          this.towers.delete(data.instanceId);
-        },
-      });
-    }
+    if (!tv) return;
+
+    // Remove from tracking BEFORE the tween so syncTowers can't double-destroy
+    // during the 300ms dissolve window (server snapshots arrive every 250ms).
+    this.towers.delete(data.instanceId);
+
+    // Floating gold refund text at tower position
+    this.spawnFloatingText(tv.base.x, tv.base.y - 20, `+${data.goldRefund}g 💰`, 0xffd700, 16);
+
+    // Dissolve animation — onComplete only destroys Phaser objects (map removal done above)
+    this.tweens.add({
+      targets: [tv.base, tv.soldier, tv.aura],
+      alpha: 0,
+      scaleX: 0,
+      scaleY: 0,
+      duration: 300,
+      ease: 'Power2.In',
+      onComplete: () => {
+        this.destroyTowerVisual(tv);
+      },
+    });
+
     // Play sell sound
     this.audio.playSellTower();
   }

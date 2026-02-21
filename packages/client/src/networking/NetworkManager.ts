@@ -89,6 +89,10 @@ export class NetworkManager {
     });
   }
 
+  async upgradeTower(instanceId: string): Promise<{ ok: boolean; reason?: string }> {
+    return this.sendCommand({ type: 'upgrade_tower', instanceId });
+  }
+
   async startWave(): Promise<{ ok: boolean; reason?: string }> {
     return this.sendCommand({ type: 'start_wave' });
   }

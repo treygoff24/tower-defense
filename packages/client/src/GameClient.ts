@@ -91,6 +91,10 @@ export class GameClient {
     return this.network.sellTower(instanceId);
   }
 
+  async upgradeTower(instanceId: string): Promise<{ ok: boolean; reason?: string }> {
+    return this.network.upgradeTower(instanceId);
+  }
+
   getLatestState(): GameState | null {
     return this.interpolator.getLatestState();
   }

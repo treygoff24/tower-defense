@@ -3,6 +3,8 @@ import type { GameState, GamePhase, ElementType } from '@td/shared';
 import { TOWER_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { TowerPanel } from '../ui/TowerPanel';
+import { TowerInspector } from '../ui/TowerInspector';
+import type { TargetingMode } from '../ui/TowerInspector';
 
 const ELEMENT_COLORS: Record<ElementType, number> = {
   fire:   0xff4400,
@@ -41,6 +43,9 @@ export class HudScene extends Phaser.Scene {
   private prevBaseHp = -1;
   private towerPanel: TowerPanel | null = null;
   private sellPanel: Phaser.GameObjects.Container | null = null;
+  private towerInspectorInst: TowerInspector | null = null;
+  private inspectorBackdrop: Phaser.GameObjects.Rectangle | null = null;
+  private targetingModes: Map<string, TargetingMode> = new Map();
   private hudGold = 0;
 
   /* Tracking for polish features */
@@ -950,5 +955,93 @@ export class HudScene extends Phaser.Scene {
       ease: 'Power2.In',
       onComplete: () => panel.destroy(),
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Tower Inspector (unified inspect/upgrade/sell panel)
+  // ─────────────────────────────────────────────────────────────────
+
+  showTowerInspector(
+    instanceId: string,
+    configId: string,
+    tier: number,
+    refund: number
+  ): void {
+    // Dismiss any existing inspector first
+    this.hideTowerInspector();
+
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
+
+    // Full-screen backdrop that dismisses the inspector when clicked outside
+    this.inspectorBackdrop = this.add
+      .rectangle(W / 2, H / 2, W, H, 0x000000, 0)
+      .setScrollFactor(0)
+      .setDepth(200)
+      .setInteractive();
+    this.inspectorBackdrop.on('pointerdown', () => this.hideTowerInspector());
+
+    // Position panel at right side of screen, centered vertically
+    const panelX = W - 130;  // center of 240px panel, 10px from right edge
+    const panelY = Math.max(60, H / 2 - 180); // top of panel
+
+    const targetingMode = this.targetingModes.get(instanceId) ?? 'first';
+
+    this.towerInspectorInst = new TowerInspector(this, panelX, panelY, {
+      instanceId,
+      configId,
+      tier,
+      refund,
+      gold: this.hudGold,
+      targetingMode,
+
+      onSell: () => {
+        const gameClient = this.registry.get('gameClient') as GameClient;
+        if (!gameClient) return;
+        gameClient.sellTower(instanceId).then((result) => {
+          if (result.ok) {
+            this.hideTowerInspector();
+            const gameScene = this.scene.get('GameScene');
+            if (gameScene) {
+              gameScene.events.emit('tower-sold-visual', {
+                instanceId,
+                goldRefund: result.goldRefund ?? refund,
+              });
+            }
+          } else {
+            console.warn('Sell rejected:', result.reason);
+          }
+        }).catch((err: unknown) => console.error('Sell error:', err));
+      },
+
+      onUpgrade: () => {
+        const gameClient = this.registry.get('gameClient') as GameClient;
+        if (!gameClient) return;
+        gameClient.upgradeTower(instanceId).then((result) => {
+          if (result.ok) {
+            this.hideTowerInspector();
+          } else {
+            console.warn('Upgrade rejected:', result.reason);
+          }
+        }).catch((err: unknown) => console.error('Upgrade error:', err));
+      },
+
+      onTargetingChange: (mode: TargetingMode) => {
+        this.targetingModes.set(instanceId, mode);
+      },
+
+      onDismiss: () => this.hideTowerInspector(),
+    });
+  }
+
+  hideTowerInspector(): void {
+    if (this.towerInspectorInst) {
+      this.towerInspectorInst.destroy();
+      this.towerInspectorInst = null;
+    }
+    if (this.inspectorBackdrop) {
+      this.inspectorBackdrop.destroy();
+      this.inspectorBackdrop = null;
+    }
   }
 }
