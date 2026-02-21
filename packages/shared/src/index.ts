@@ -244,7 +244,8 @@ export type ClientCommand =
   | { type: 'set_targeting'; instanceId: string; mode: TargetingMode }
   | { type: 'start_wave' }
   | { type: 'reconnect'; playerId: string }
-  | { type: 'chat'; message: string };
+  | { type: 'chat'; message: string }
+  | { type: 'ping'; x: number; y: number };
 
 // Server -> Client events
 export type ServerEvent =
@@ -262,6 +263,8 @@ export type ServerEvent =
   | { type: 'phase_changed'; phase: GamePhase }
   | { type: 'player_joined'; player: PlayerState }
   | { type: 'player_left'; playerId: string }
+  | { type: 'chat_message'; playerId: string; playerName: string; message: string }
+  | { type: 'ping_marker'; playerId: string; x: number; y: number }
   | { type: 'error'; message: string };
 
 // ── Constants ──────────────────────────────────────────────

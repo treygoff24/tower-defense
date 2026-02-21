@@ -1039,10 +1039,29 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  /**
+   * Grunt has 3 color variants — deterministic rotation based on enemy ID.
+   * Returns 0/1/2 consistently for the same enemy across frames.
+   */
+  private getGruntVariantIdx(enemyId: string): number {
+    let hash = 0;
+    for (let i = 0; i < enemyId.length; i++) {
+      hash = (hash * 31 + enemyId.charCodeAt(i)) >>> 0;
+    }
+    return hash % GRUNT_VARIANT_KEYS.length;
+  }
+
   private createEnemyVisual(_id: string, enemy: EnemyState): EnemyVisual {
-    const { key, scale } = this.getEnemyInfo(enemy.type);
-    const walkAnim = `enemy_${enemy.type}_walk`;
-    const idleAnim = `enemy_${enemy.type}_idle`;
+    const { scale } = this.getEnemyInfo(enemy.type);
+
+    // Grunt: rotate through 3 color variant keys (same Scarab sprite, different tint)
+    const spriteKey =
+      enemy.type === 'grunt'
+        ? GRUNT_VARIANT_KEYS[this.getGruntVariantIdx(_id)]
+        : `enemy_${enemy.type}`;
+
+    const walkAnim = `${spriteKey}_walk`;
+    const idleAnim = `${spriteKey}_idle`;
 
     // Convert tile coords to pixel coords
     const px = enemy.x * TILE_SIZE + TILE_SIZE / 2;
@@ -1052,8 +1071,8 @@ export class GameScene extends Phaser.Scene {
     const shadow = this.add.ellipse(px, py + 6, 18, 6, 0x000000, 0.4);
     shadow.setDepth(SHADOW_DEPTH);
 
-    // Sprite
-    const sprite = this.add.sprite(px, py, key);
+    // Sprite — use per-type variant key
+    const sprite = this.add.sprite(px, py, spriteKey);
     sprite.setScale(scale);
     sprite.setDepth(ENTITY_DEPTH + py * 0.001);
 
@@ -1064,17 +1083,23 @@ export class GameScene extends Phaser.Scene {
       sprite.play(idleAnim);
     }
 
-    // Tank: scale up for larger visual
+    // Grunt: apply variant tint for visual differentiation
+    if (enemy.type === 'grunt') {
+      const tint = GRUNT_VARIANT_TINTS[this.getGruntVariantIdx(_id)];
+      sprite.setTint(tint);
+    }
+
+    // Tank: scale up for larger visual (1.3×)
     if (enemy.type === 'tank') {
       sprite.setScale(scale * 1.3);
     }
 
-    // Runner: slightly smaller
+    // Runner: slightly smaller/lighter
     if (enemy.type === 'runner') {
       sprite.setScale(scale * 0.85);
     }
 
-    // Flyer: floating bobbing animation
+    // Flyer: floating bobbing animation (sine wave Y)
     if (enemy.type === 'flyer') {
       this.tweens.add({
         targets: sprite,
@@ -1086,7 +1111,7 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Boss: glowing ring underneath
+    // Boss: glowing ring underneath + extra scale
     if (enemy.type === 'boss') {
       sprite.setScale(scale * 1.5);
       const glowRing = this.add.circle(px, py + 4, 20, 0xff4400, 0.4);
@@ -1105,13 +1130,13 @@ export class GameScene extends Phaser.Scene {
       (sprite as unknown as Record<string, unknown>)['__bossGlow'] = glowRing;
     }
 
-    // Invisible enemies: shimmer effect with alpha tween + cyan tint
+    // Invisible: alpha oscillates 0.3–0.7 with cyan tint
     if (enemy.type === 'invisible') {
-      sprite.setAlpha(0.45);
+      sprite.setAlpha(0.5);
       sprite.setTint(0x88ddff);
       this.tweens.add({
         targets: sprite,
-        alpha: { from: 0.15, to: 0.45 },
+        alpha: { from: 0.3, to: 0.7 },
         duration: 1500,
         yoyo: true,
         repeat: -1,

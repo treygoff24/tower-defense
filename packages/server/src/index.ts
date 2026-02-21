@@ -99,11 +99,18 @@ io.on('connection', (socket) => {
         case 'reconnect':
           result = { ok: false, reason: 'reconnect not yet implemented' };
           break;
-        case 'chat':
-          // Broadcast chat to all clients
-          io.emit('chat', { playerId: socket.id, message: command.message });
+        case 'chat': {
+          const player = sim.state.players[socket.id];
+          const playerName = player?.name ?? 'Unknown';
+          io.emit('event', { type: 'chat_message', playerId: socket.id, playerName, message: command.message });
           result = { ok: true };
           break;
+        }
+        case 'ping': {
+          io.emit('event', { type: 'ping_marker', playerId: socket.id, x: command.x, y: command.y });
+          result = { ok: true };
+          break;
+        }
         default:
           result = { ok: false, reason: `Unknown command type` };
       }
