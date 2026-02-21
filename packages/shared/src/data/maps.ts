@@ -146,7 +146,7 @@ export const MAP_CONFIGS: Record<string, MapConfig> = {
       // Top-left corner trees
       { x:  0, y:  0, type: 'tree' },
       { x:  1, y:  0, type: 'tree' },
-      { x:  0, y:  4, type: 'bush' },
+      { x:  0, y:  3, type: 'bush' },
 
       // Between BZ1 and BZ2 – rocks along top edge
       { x:  7, y:  0, type: 'rock' },

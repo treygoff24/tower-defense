@@ -76,8 +76,8 @@ describe('GameSimulation — tower_fired events', () => {
   });
 
   it('tower_fired event for a fire tower includes element field', () => {
-    // fire_turret → class 'fire' → element should be 'fire'
-    sim.placeTower('p1', 'fire_turret', 2, 6);
+    // flame_spire → class 'fire' → element should be 'fire'
+    sim.placeTower('p1', 'flame_spire', 2, 6);
     sim.startWave();
 
     const events = collectFiredEvents(sim);
