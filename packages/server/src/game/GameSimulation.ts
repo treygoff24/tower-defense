@@ -136,10 +136,14 @@ export class GameSimulation {
     return { ok: true, newTier: result.newTier };
   }
 
-  sellTower(_playerId: string, instanceId: string): CommandResult & { goldRefund?: number } {
+  sellTower(playerId: string, instanceId: string): CommandResult & { goldRefund?: number } {
     const phase = this.room.state.phase;
     if (phase !== 'prep' && phase !== 'combat') {
       return { ok: false, reason: `Tower selling not allowed during ${phase} phase` };
+    }
+    const tower = this.towerSystem.getTower(instanceId);
+    if (tower && tower.ownerId !== playerId) {
+      return { ok: false, reason: 'You do not own this tower' };
     }
     const result = this.towerSystem.sellTower(instanceId);
     if (result.ok && result.goldRefund !== undefined) {
@@ -149,14 +153,16 @@ export class GameSimulation {
     return { ok: result.ok, reason: result.reason };
   }
 
-  setTargeting(_playerId: string, instanceId: string, mode: TargetingMode): CommandResult {
+  setTargeting(playerId: string, instanceId: string, mode: TargetingMode): CommandResult {
     const tower = this.towerSystem.getTower(instanceId);
     if (!tower) return { ok: false, reason: 'Tower not found' };
+    if (tower.ownerId !== playerId) return { ok: false, reason: 'You do not own this tower' };
     tower.targetingMode = mode;
     return { ok: true };
   }
 
   startWave(): void {
+    if (this.state.phase !== 'prep') return;
     if (!this.waveScheduler.hasMoreWaves()) return;
     this.waveScheduler.advance();
     this.room.state.wave = this.waveScheduler.currentWave;

@@ -715,7 +715,7 @@ export class GameScene extends Phaser.Scene {
       if (gameClient && this.isValidBuildTile(tileX, tileY) && !this.isTileOccupied(tileX, tileY)) {
         this.events.emit('tile-clicked', { tileX, tileY, configId: this.selectedTowerId });
       }
-    } else if (this.currentPhase === 'prep') {
+    } else if (this.currentPhase === 'prep' || this.currentPhase === 'combat') {
       // Check if clicking on a placed tower → show TowerInspector
       const towerAtTile = this.getTowerAtTile(tileX, tileY);
       if (towerAtTile) {
