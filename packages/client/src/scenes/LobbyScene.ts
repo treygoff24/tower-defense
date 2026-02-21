@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GameClient } from '../GameClient';
+import { S } from '../dpr';
 
 export class LobbyScene extends Phaser.Scene {
   private playerName: string = 'Player';
@@ -26,30 +27,30 @@ export class LobbyScene extends Phaser.Scene {
     // Banner.png is 704×512 — use as a small decorative accent behind the title
     if (this.textures.exists('ui_banner')) {
       const banner = this.add.image(W / 2, H * 0.19, 'ui_banner');
-      banner.setDisplaySize(320, 90); // small accent — does not dominate
+      banner.setDisplaySize(320 * S, 90 * S);
       banner.setAlpha(0.55);
     } else {
       const panelG = this.add.graphics();
       panelG.fillStyle(0x0d1a30, 0.9);
-      panelG.fillRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
-      panelG.lineStyle(2, 0x4466aa, 0.8);
-      panelG.strokeRoundedRect(W / 2 - 280, H * 0.14, 560, 100, 16);
+      panelG.fillRoundedRect(W / 2 - 280 * S, H * 0.14, 560 * S, 100 * S, 16 * S);
+      panelG.lineStyle(2 * S, 0x4466aa, 0.8);
+      panelG.strokeRoundedRect(W / 2 - 280 * S, H * 0.14, 560 * S, 100 * S, 16 * S);
     }
 
     // Title glow layer
-    const titleGlow = this.add.text(W / 2, H * 0.19 + 2, '⚔  ELEMENT DEFENSE  ⚔', {
-      fontSize: '44px',
+    const titleGlow = this.add.text(W / 2, H * 0.19 + 2 * S, '⚔  ELEMENT DEFENSE  ⚔', {
+      fontSize: `${44 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#001122',
     }).setOrigin(0.5).setAlpha(0.5);
 
     const title = this.add.text(W / 2, H * 0.19, '⚔  ELEMENT DEFENSE  ⚔', {
-      fontSize: '44px',
+      fontSize: `${44 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffd700',
       stroke: '#442200',
-      strokeThickness: 5,
+      strokeThickness: 5 * S,
     }).setOrigin(0.5);
 
     // Subtle title breathing tween
@@ -64,7 +65,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     this.add.text(W / 2, H * 0.26, 'Cooperative Multiplayer Tower Defense', {
-      fontSize: '18px',
+      fontSize: `${18 * S}px`,
       fontFamily: 'Arial',
       color: '#8899bb',
       fontStyle: 'italic',
@@ -78,7 +79,7 @@ export class LobbyScene extends Phaser.Scene {
       { icon: '☠',  name: 'Poison', color: '#66ff44' },
     ];
     const badgeY = H * 0.36;
-    const spacing = 130;
+    const spacing = 130 * S;
     const startX = W / 2 - (elements.length - 1) * spacing / 2;
     elements.forEach((el, i) => {
       const bx = startX + i * spacing;
@@ -88,19 +89,19 @@ export class LobbyScene extends Phaser.Scene {
 
       const bg = this.add.graphics();
       bg.fillStyle(0x0d1a30, 0.8);
-      bg.fillCircle(0, 0, 32);           // local origin (0,0)
-      bg.lineStyle(2, Phaser.Display.Color.HexStringToColor(el.color).color, 0.9);
-      bg.strokeCircle(0, 0, 32);
+      bg.fillCircle(0, 0, 32 * S);
+      bg.lineStyle(2 * S, Phaser.Display.Color.HexStringToColor(el.color).color, 0.9);
+      bg.strokeCircle(0, 0, 32 * S);
 
-      const iconText = this.add.text(0, -6, el.icon, { fontSize: '26px' }).setOrigin(0.5);
-      const nameText = this.add.text(0, 22, el.name, { fontSize: '11px', fontFamily: 'Arial', color: el.color }).setOrigin(0.5);
+      const iconText = this.add.text(0, -6 * S, el.icon, { fontSize: `${26 * S}px` }).setOrigin(0.5);
+      const nameText = this.add.text(0, 22 * S, el.name, { fontSize: `${11 * S}px`, fontFamily: 'Arial', color: el.color }).setOrigin(0.5);
 
       badgeContainer.add([bg, iconText, nameText]);
 
-      // Float animation: bobs 5 px upward then back — correct because we tween container.y
+      // Float animation: bobs 5 px upward then back
       this.tweens.add({
         targets: badgeContainer,
-        y: badgeY - 5,
+        y: badgeY - 5 * S,
         duration: 1500 + i * 200,
         yoyo: true,
         repeat: -1,
@@ -112,34 +113,37 @@ export class LobbyScene extends Phaser.Scene {
     // WoodTable backdrop behind the input section
     if (this.textures.exists('ui_wood_table')) {
       const table = this.add.image(W / 2, H * 0.545, 'ui_wood_table');
-      table.setDisplaySize(340, 120);
+      table.setDisplaySize(340 * S, 120 * S);
       table.setAlpha(0.75);
     }
 
     this.add.text(W / 2, H * 0.49, 'PLAYER NAME', {
-      fontSize: '13px',
+      fontSize: `${13 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#7788aa',
-      letterSpacing: 4,
+      letterSpacing: 4 * S,
     }).setOrigin(0.5);
 
     const inputBg = this.add.graphics();
-    const inputX = W / 2 - 120;
+    const inputW = 240 * S;
+    const inputH = 44 * S;
+    const inputR = 10 * S;
+    const inputX = W / 2 - inputW / 2;
     const inputY = H * 0.52;
     inputBg.fillStyle(0x0d1a30, 0.9);
-    inputBg.fillRoundedRect(inputX, inputY, 240, 44, 10);
-    inputBg.lineStyle(2, 0x224466, 1);
-    inputBg.strokeRoundedRect(inputX, inputY, 240, 44, 10);
+    inputBg.fillRoundedRect(inputX, inputY, inputW, inputH, inputR);
+    inputBg.lineStyle(2 * S, 0x224466, 1);
+    inputBg.strokeRoundedRect(inputX, inputY, inputW, inputH, inputR);
 
-    const nameText = this.add.text(W / 2, inputY + 22, this.playerName, {
-      fontSize: '22px',
+    const nameText = this.add.text(W / 2, inputY + inputH / 2, this.playerName, {
+      fontSize: `${22 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#ffffff',
     }).setOrigin(0.5);
 
     // Cursor blink
-    const cursor = this.add.text(W / 2 + nameText.width / 2 + 2, inputY + 22, '|', {
-      fontSize: '22px', fontFamily: 'Arial', color: '#00ff88',
+    const cursor = this.add.text(W / 2 + nameText.width / 2 + 2 * S, inputY + inputH / 2, '|', {
+      fontSize: `${22 * S}px`, fontFamily: 'Arial', color: '#00ff88',
     }).setOrigin(0, 0.5);
     this.tweens.add({
       targets: cursor,
@@ -149,29 +153,29 @@ export class LobbyScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    const inputHit = this.add.rectangle(W / 2, inputY + 22, 240, 44, 0x000000, 0)
+    const inputHit = this.add.rectangle(W / 2, inputY + inputH / 2, inputW, inputH, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
 
     inputHit.on('pointerover', () => {
       inputBg.clear();
       inputBg.fillStyle(0x0d2244, 0.95);
-      inputBg.fillRoundedRect(inputX, inputY, 240, 44, 10);
-      inputBg.lineStyle(2, 0x00ff88, 1);
-      inputBg.strokeRoundedRect(inputX, inputY, 240, 44, 10);
+      inputBg.fillRoundedRect(inputX, inputY, inputW, inputH, inputR);
+      inputBg.lineStyle(2 * S, 0x00ff88, 1);
+      inputBg.strokeRoundedRect(inputX, inputY, inputW, inputH, inputR);
     });
     inputHit.on('pointerout', () => {
       inputBg.clear();
       inputBg.fillStyle(0x0d1a30, 0.9);
-      inputBg.fillRoundedRect(inputX, inputY, 240, 44, 10);
-      inputBg.lineStyle(2, 0x224466, 1);
-      inputBg.strokeRoundedRect(inputX, inputY, 240, 44, 10);
+      inputBg.fillRoundedRect(inputX, inputY, inputW, inputH, inputR);
+      inputBg.lineStyle(2 * S, 0x224466, 1);
+      inputBg.strokeRoundedRect(inputX, inputY, inputW, inputH, inputR);
     });
     inputHit.on('pointerdown', () => {
       const entered = prompt('Enter your name:', this.playerName);
       if (entered && entered.trim()) {
         this.playerName = entered.trim().slice(0, 16);
         nameText.setText(this.playerName);
-        cursor.setX(W / 2 + nameText.width / 2 + 2);
+        cursor.setX(W / 2 + nameText.width / 2 + 2 * S);
       }
     });
 
@@ -184,15 +188,15 @@ export class LobbyScene extends Phaser.Scene {
 
     // ── How to play hint ──────────────────────────────────────────
     this.add.text(W / 2, H * 0.77, '🎮  Place towers during PREP phase  •  Work together  •  Survive all waves  🎮', {
-      fontSize: '13px',
+      fontSize: `${13 * S}px`,
       fontFamily: 'Arial',
       color: '#556677',
       align: 'center',
     }).setOrigin(0.5);
 
     // ── Version ───────────────────────────────────────────────────
-    this.add.text(W - 16, H - 16, 'v0.1.0  ·  Element Defense', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#334455',
+    this.add.text(W - 16 * S, H - 16 * S, 'v0.1.0  ·  Element Defense', {
+      fontSize: `${12 * S}px`, fontFamily: 'Arial', color: '#334455',
     }).setOrigin(1, 1);
 
     // ── Fade in ───────────────────────────────────────────────────
@@ -201,36 +205,37 @@ export class LobbyScene extends Phaser.Scene {
 
   private createButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
-    const btnW = 260;
-    const btnH = 54;
+    const btnW = 260 * S;
+    const btnH = 54 * S;
+    const r = 10 * S;
 
     const gfx = this.add.graphics();
     const drawBtn = (hover: boolean, pressed: boolean) => {
       gfx.clear();
       // Shadow
       gfx.fillStyle(0x000000, 0.35);
-      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 3, btnW, btnH, 10);
+      gfx.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + 3 * S, btnW, btnH, r);
       // Body
       const bodyColor = pressed ? 0x003d1a : hover ? 0x006633 : 0x004d28;
       gfx.fillStyle(bodyColor, 1);
-      gfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      gfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
       // Top highlight
       gfx.fillStyle(0xffffff, hover ? 0.12 : 0.06);
-      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 1, btnW - 4, btnH / 2 - 2, { tl: 8, tr: 8, bl: 0, br: 0 });
+      gfx.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + S, btnW - 4 * S, btnH / 2 - 2 * S, { tl: 8 * S, tr: 8 * S, bl: 0, br: 0 });
       // Border
       const borderColor = hover ? 0x00ff88 : 0x00cc66;
-      gfx.lineStyle(2, borderColor, hover ? 1 : 0.8);
-      gfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      gfx.lineStyle(2 * S, borderColor, hover ? 1 : 0.8);
+      gfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
     };
     drawBtn(false, false);
 
     const txt = this.add.text(0, 0, label, {
-      fontSize: '20px',
+      fontSize: `${20 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffffff',
       stroke: '#002211',
-      strokeThickness: 3,
+      strokeThickness: 3 * S,
     }).setOrigin(0.5);
 
     const hitArea = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
@@ -256,7 +261,7 @@ export class LobbyScene extends Phaser.Scene {
     for (let i = 0; i < 120; i++) {
       const sx = Math.random() * W;
       const sy = Math.random() * H;
-      const size = Math.random() < 0.8 ? 1 : 2;
+      const size = (Math.random() < 0.8 ? 1 : 2) * S;
       const alpha = 0.3 + Math.random() * 0.5;
       g.fillStyle(0xffffff, alpha);
       g.fillRect(sx, sy, size, size);
@@ -266,7 +271,7 @@ export class LobbyScene extends Phaser.Scene {
       const star = this.add.circle(
         Math.random() * W,
         Math.random() * H,
-        1.5,
+        1.5 * S,
         0xffffff,
         0.8
       );
@@ -288,19 +293,19 @@ export class LobbyScene extends Phaser.Scene {
       if (!this.textures.exists(key)) continue;
       const cloud = this.add.image(
         Math.random() * W,
-        80 + Math.random() * (H * 0.6),
+        80 * S + Math.random() * (H * 0.6),
         key
       );
       cloud.setAlpha(0.08 + Math.random() * 0.07);
-      cloud.setScale(0.25 + Math.random() * 0.2);
+      cloud.setScale((0.25 + Math.random() * 0.2) * S);
       cloud.setDepth(1);
       const speed = 12 + Math.random() * 18;
       this.tweens.add({
         targets: cloud,
-        x: W + 200,
-        duration: ((W + 400) / speed) * 1000,
+        x: W + 200 * S,
+        duration: ((W + 400 * S) / speed) * 1000,
         repeat: -1,
-        onRepeat: () => { cloud.x = -200; cloud.y = 80 + Math.random() * (H * 0.6); },
+        onRepeat: () => { cloud.x = -200 * S; cloud.y = 80 * S + Math.random() * (H * 0.6); },
       });
     }
   }

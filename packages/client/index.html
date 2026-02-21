@@ -8,6 +8,8 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #1a1a2e; overflow: hidden; }
     #game-container { width: 100vw; height: 100vh; }
+    /* Smooth bilinear interpolation when the browser CSS-scales the canvas */
+    canvas { image-rendering: auto; }
   </style>
 </head>
 <body>

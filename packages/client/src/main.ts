@@ -5,17 +5,23 @@ import { ClassSelectScene } from './scenes/ClassSelectScene';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
 import { GameClient } from './GameClient';
+import { GAME_W, GAME_H, S } from './dpr';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: 1280,
-  height: 720,
+  width: GAME_W * S,
+  height: GAME_H * S,
   backgroundColor: '#1a1a2e',
   scene: [BootScene, LobbyScene, ClassSelectScene, GameScene, HudScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  render: {
+    pixelArt: false,
+    antialias: true,
+    antialiasGL: true,
   },
 };
 

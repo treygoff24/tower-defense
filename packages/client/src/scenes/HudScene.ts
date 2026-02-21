@@ -3,6 +3,7 @@ import type { GameState, GamePhase, ElementType } from '@td/shared';
 import { TOWER_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { TowerPanel } from '../ui/TowerPanel';
+import { S } from '../dpr';
 
 const ELEMENT_COLORS: Record<ElementType, number> = {
   fire:   0xff4400,
@@ -64,43 +65,43 @@ export class HudScene extends Phaser.Scene {
     const H = this.cameras.main.height;
 
     // ── Gold panel (top-left) ──────────────────────────────────────
-    const goldPanel = this.createPanel(14, 14, 180, 38);
+    const goldPanel = this.createPanel(14 * S, 14 * S, 180 * S, 38 * S);
 
     // Subtle gold shimmer border
     const goldBorder = this.add.graphics();
-    goldBorder.lineStyle(1, 0xffd700, 0.4);
-    goldBorder.strokeRoundedRect(14, 14, 180, 38, 8);
+    goldBorder.lineStyle(S, 0xffd700, 0.4);
+    goldBorder.strokeRoundedRect(14 * S, 14 * S, 180 * S, 38 * S, 8 * S);
     goldBorder.setScrollFactor(0).setDepth(100);
 
-    this.add.text(22, 20, '💰', { fontSize: '20px' }).setScrollFactor(0).setDepth(101);
-    this.goldText = this.add.text(50, 21, 'Gold: 0', {
-      fontSize: '20px',
+    this.add.text(22 * S, 20 * S, '💰', { fontSize: `${20 * S}px` }).setScrollFactor(0).setDepth(101);
+    this.goldText = this.add.text(50 * S, 21 * S, 'Gold: 0', {
+      fontSize: `${20 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#ffd700',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 2 * S,
     }).setScrollFactor(0).setDepth(101);
 
     // ── Wave panel (top-center) ───────────────────────────────────
-    this.createPanel(W / 2 - 110, 14, 220, 38);
-    this.waveText = this.add.text(W / 2, 22, 'Wave 0 / 20', {
-      fontSize: '18px',
+    this.createPanel(W / 2 - 110 * S, 14 * S, 220 * S, 38 * S);
+    this.waveText = this.add.text(W / 2, 22 * S, 'Wave 0 / 20', {
+      fontSize: `${18 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#ffffff',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 2 * S,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101);
 
     // ── Base HP (top-right) ────────────────────────────────────────
-    const hpPanelW = 210;
-    this.createPanel(W - hpPanelW - 14, 14, hpPanelW, 38);
-    this.add.text(W - hpPanelW - 4, 20, '🏰', { fontSize: '20px' }).setScrollFactor(0).setDepth(101);
-    this.hpText = this.add.text(W - hpPanelW + 22, 21, 'Base HP: 100', {
-      fontSize: '17px',
+    const hpPanelW = 210 * S;
+    this.createPanel(W - hpPanelW - 14 * S, 14 * S, hpPanelW, 38 * S);
+    this.add.text(W - hpPanelW - 4 * S, 20 * S, '🏰', { fontSize: `${20 * S}px` }).setScrollFactor(0).setDepth(101);
+    this.hpText = this.add.text(W - hpPanelW + 22 * S, 21 * S, 'Base HP: 100', {
+      fontSize: `${17 * S}px`,
       fontFamily: 'Arial',
       color: '#44ff44',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 2 * S,
     }).setScrollFactor(0).setDepth(101);
 
     // HP bar background glow
@@ -112,39 +113,39 @@ export class HudScene extends Phaser.Scene {
     // Tiny Swords bar sprites (if available) — override Graphics fallback
     if (this.textures.exists('ui_big_bar_base')) {
       this.hpBarFill.setVisible(false);
-      const barLeft = W - hpPanelW - 14;
-      this.hpBarBase = this.add.image(barLeft, 54, 'ui_big_bar_base')
-        .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16).setScrollFactor(0).setDepth(101);
-      this.hpBarFillImg = this.add.image(barLeft, 54, 'ui_big_bar_fill')
-        .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16).setScrollFactor(0).setDepth(101);
+      const barLeft = W - hpPanelW - 14 * S;
+      this.hpBarBase = this.add.image(barLeft, 54 * S, 'ui_big_bar_base')
+        .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16 * S).setScrollFactor(0).setDepth(101);
+      this.hpBarFillImg = this.add.image(barLeft, 54 * S, 'ui_big_bar_fill')
+        .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16 * S).setScrollFactor(0).setDepth(101);
     }
 
     // ── Class icon (bottom-left) ───────────────────────────────────
-    this.classIcon = this.createClassIcon(70, H - 70);
+    this.classIcon = this.createClassIcon(70 * S, H - 70 * S);
     this.classIcon.setScrollFactor(0).setDepth(101);
 
     // ── Start Wave button (center-bottom) ─────────────────────────
-    this.startWaveButton = this.createStartWaveButton(W / 2, H - 60);
+    this.startWaveButton = this.createStartWaveButton(W / 2, H - 60 * S);
     this.startWaveButton.setScrollFactor(0).setDepth(101);
     this.startWaveButton.setVisible(false);
 
     // ── Phase announcement (center) ───────────────────────────────
-    this.phaseText = this.add.text(W / 2, 90, '', {
-      fontSize: '38px',
+    this.phaseText = this.add.text(W / 2, 90 * S, '', {
+      fontSize: `${38 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#00ff88',
       stroke: '#000000',
-      strokeThickness: 5,
+      strokeThickness: 5 * S,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(102).setVisible(false);
 
     // ── Prep timer ────────────────────────────────────────────────
-    this.prepTimerText = this.add.text(W / 2, 56, '', {
-      fontSize: '15px',
+    this.prepTimerText = this.add.text(W / 2, 56 * S, '', {
+      fontSize: `${15 * S}px`,
       fontFamily: 'Arial',
       color: '#88ffff',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 2 * S,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101).setVisible(false);
   }
 
@@ -153,6 +154,7 @@ export class HudScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
 
   private createPanel(x: number, y: number, w: number, h: number): Phaser.GameObjects.Graphics {
+    const r = 8 * S;
     // Try WoodTable texture first
     if (this.textures.exists('ui_wood_table')) {
       const img = this.add.image(x + w / 2, y + h / 2, 'ui_wood_table');
@@ -163,7 +165,7 @@ export class HudScene extends Phaser.Scene {
       // Dark overlay for readability
       const overlay = this.add.graphics();
       overlay.fillStyle(0x000000, 0.3);
-      overlay.fillRoundedRect(x, y, w, h, 8);
+      overlay.fillRoundedRect(x, y, w, h, r);
       overlay.setScrollFactor(0).setDepth(100);
     }
 
@@ -171,10 +173,10 @@ export class HudScene extends Phaser.Scene {
     const g = this.add.graphics();
     if (!this.textures.exists('ui_wood_table')) {
       g.fillStyle(0x0a0a20, 0.82);
-      g.fillRoundedRect(x, y, w, h, 8);
+      g.fillRoundedRect(x, y, w, h, r);
     }
-    g.lineStyle(1, 0x6666aa, 0.9);
-    g.strokeRoundedRect(x, y, w, h, 8);
+    g.lineStyle(S, 0x6666aa, 0.9);
+    g.strokeRoundedRect(x, y, w, h, r);
     g.setScrollFactor(0).setDepth(100);
     return g;
   }
@@ -188,16 +190,16 @@ export class HudScene extends Phaser.Scene {
 
     const bg = this.add.graphics();
     bg.fillStyle(0x0a0a20, 0.85);
-    bg.fillCircle(0, 0, 36);
-    bg.lineStyle(3, 0x6666aa, 1);
-    bg.strokeCircle(0, 0, 36);
+    bg.fillCircle(0, 0, 36 * S);
+    bg.lineStyle(3 * S, 0x6666aa, 1);
+    bg.strokeCircle(0, 0, 36 * S);
 
-    const icon = this.add.text(0, -4, '⚔', {
-      fontSize: '28px',
+    const icon = this.add.text(0, -4 * S, '⚔', {
+      fontSize: `${28 * S}px`,
     }).setOrigin(0.5);
 
-    const nameText = this.add.text(0, 44, 'Towers', {
-      fontSize: '11px',
+    const nameText = this.add.text(0, 44 * S, 'Towers', {
+      fontSize: `${11 * S}px`,
       fontFamily: 'Arial',
       color: '#aaaaaa',
     }).setOrigin(0.5);
@@ -216,27 +218,28 @@ export class HudScene extends Phaser.Scene {
 
   private createStartWaveButton(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y);
-    const btnW = 220;
-    const btnH = 48;
+    const btnW = 220 * S;
+    const btnH = 48 * S;
+    const r = 10 * S;
 
     const gfx = this.add.graphics();
     const drawBtn = (state: 'normal' | 'hover' | 'pressed') => {
       gfx.clear();
       // Shadow
       gfx.fillStyle(0x000000, 0.35);
-      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 3, btnW, btnH, 10);
+      gfx.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + 3 * S, btnW, btnH, r);
       // Body
       const fills = { normal: 0x0050aa, hover: 0x0066cc, pressed: 0x003d88 };
       gfx.fillStyle(fills[state], 1);
-      gfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      gfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
       // Top highlight
       gfx.fillStyle(0xffffff, state === 'hover' ? 0.14 : 0.07);
-      gfx.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 1, btnW - 4, btnH / 2 - 2, { tl: 8, tr: 8, bl: 0, br: 0 });
+      gfx.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + S, btnW - 4 * S, btnH / 2 - 2 * S, { tl: 8 * S, tr: 8 * S, bl: 0, br: 0 });
       // Border
       const borders = { normal: [0x4488ff, 0.85] as const, hover: [0x66aaff, 1] as const, pressed: [0x3377ee, 1] as const };
       const [bc, ba] = borders[state];
-      gfx.lineStyle(2, bc, ba);
-      gfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      gfx.lineStyle(2 * S, bc, ba);
+      gfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
     };
     drawBtn('normal');
 
@@ -249,12 +252,12 @@ export class HudScene extends Phaser.Scene {
     hitArea.on('pointerup', () => { drawBtn('normal'); this.handleStartWave(); });
 
     const label = this.add.text(0, 0, '⚔  START WAVE', {
-      fontSize: '18px',
+      fontSize: `${18 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffffff',
       stroke: '#001133',
-      strokeThickness: 3,
+      strokeThickness: 3 * S,
     }).setOrigin(0.5);
 
     container.add([gfx, label, hitArea]);
@@ -374,22 +377,22 @@ export class HudScene extends Phaser.Scene {
 
     // HP bar background glow
     const W = this.cameras.main.width;
-    const panelW = 210;
+    const panelW = 210 * S;
     this.hpBarGlow.clear();
     this.hpBarGlow.fillStyle(fillColor, 0.1);
-    this.hpBarGlow.fillRoundedRect(W - panelW - 18, 48, panelW + 8, 14, 4);
+    this.hpBarGlow.fillRoundedRect(W - panelW - 18 * S, 48 * S, panelW + 8 * S, 14 * S, 4 * S);
 
     // HP bar
     if (this.hpBarFillImg) {
       // Tiny Swords sprite bar — scale fill width proportionally from left
-      this.hpBarFillImg.setDisplaySize(Math.max(panelW * hpRatio, 2), 16);
+      this.hpBarFillImg.setDisplaySize(Math.max(panelW * hpRatio, 2 * S), 16 * S);
       this.hpBarFillImg.setTint(fillColor);
     } else {
       this.hpBarFill.clear();
       this.hpBarFill.fillStyle(0x000000, 0.5);
-      this.hpBarFill.fillRect(W - panelW - 14, 52, panelW, 6);
+      this.hpBarFill.fillRect(W - panelW - 14 * S, 52 * S, panelW, 6 * S);
       this.hpBarFill.fillStyle(fillColor, 1);
-      this.hpBarFill.fillRect(W - panelW - 14, 52, panelW * hpRatio, 6);
+      this.hpBarFill.fillRect(W - panelW - 14 * S, 52 * S, panelW * hpRatio, 6 * S);
     }
 
     // Low-HP pulsing red tint on HP text
@@ -441,17 +444,17 @@ export class HudScene extends Phaser.Scene {
   private showDamageIndicator(currentHp: number, prevHp: number): void {
     const dmg = prevHp - currentHp;
     const W = this.cameras.main.width;
-    const dmgText = this.add.text(W - 30, 65, `-${dmg}`, {
-      fontSize: '26px',
+    const dmgText = this.add.text(W - 30 * S, 65 * S, `-${dmg}`, {
+      fontSize: `${26 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#ff3333',
       stroke: '#000000',
-      strokeThickness: 3,
+      strokeThickness: 3 * S,
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(103);
 
     this.tweens.add({
       targets: dmgText,
-      y: 30,
+      y: 30 * S,
       alpha: 0,
       duration: 1000,
       ease: 'Power2',
@@ -475,9 +478,9 @@ export class HudScene extends Phaser.Scene {
 
       bg.clear();
       bg.fillStyle(0x0a0a20, 0.85);
-      bg.fillCircle(0, 0, 36);
-      bg.lineStyle(3, color, 1);
-      bg.strokeCircle(0, 0, 36);
+      bg.fillCircle(0, 0, 36 * S);
+      bg.lineStyle(3 * S, color, 1);
+      bg.strokeCircle(0, 0, 36 * S);
 
       iconText.setText(icon);
       nameText.setText(name);
@@ -513,7 +516,7 @@ export class HudScene extends Phaser.Scene {
     if (classTowers.length === 0) return;
 
     // Position: right sidebar, vertically centered
-    const panelX = W - 110;  // 210px wide panel, centered 110px from right
+    const panelX = W - 110 * S;  // 210px wide panel, centered 110px from right
     const panelY = H / 2;
     this.towerPanel = new TowerPanel(this, panelX, panelY);
     this.towerPanel.getContainer().setScrollFactor(0).setDepth(101);
@@ -548,13 +551,13 @@ export class HudScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(200);
 
     // Animated text
-    const resultText = this.add.text(W / 2, H / 2 - 60, isVictory ? '🏆 VICTORY!' : '💀 DEFEAT', {
-      fontSize: '72px',
+    const resultText = this.add.text(W / 2, H / 2 - 60 * S, isVictory ? '🏆 VICTORY!' : '💀 DEFEAT', {
+      fontSize: `${72 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: isVictory ? '#ffd700' : '#ff3333',
       stroke: '#000000',
-      strokeThickness: 7,
+      strokeThickness: 7 * S,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
     resultText.setScale(0);
     this.tweens.add({
@@ -564,14 +567,14 @@ export class HudScene extends Phaser.Scene {
       ease: 'Back.Out',
     });
 
-    this.add.text(W / 2, H / 2 + 20, isVictory ? 'All waves survived!' : 'The base has fallen...', {
-      fontSize: '24px',
+    this.add.text(W / 2, H / 2 + 20 * S, isVictory ? 'All waves survived!' : 'The base has fallen...', {
+      fontSize: `${24 * S}px`,
       fontFamily: 'Arial',
       color: '#cccccc',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
 
-    this.add.text(W / 2, H / 2 + 70, 'Refresh to play again', {
-      fontSize: '18px',
+    this.add.text(W / 2, H / 2 + 70 * S, 'Refresh to play again', {
+      fontSize: `${18 * S}px`,
       fontFamily: 'Arial',
       color: '#888888',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
@@ -587,7 +590,7 @@ export class HudScene extends Phaser.Scene {
     for (let i = 0; i < 60; i++) {
       this.time.delayedCall(i * 50, () => {
         const x = Math.random() * W;
-        const circle = this.add.circle(x, H + 20, 4 + Math.random() * 6, colors[Math.floor(Math.random() * colors.length)])
+        const circle = this.add.circle(x, H + 20 * S, (4 + Math.random() * 6) * S, colors[Math.floor(Math.random() * colors.length)])
           .setScrollFactor(0).setDepth(202);
         this.tweens.add({
           targets: circle,
@@ -709,7 +712,7 @@ export class HudScene extends Phaser.Scene {
     const gfx = this.add.graphics().setScrollFactor(0).setDepth(99);
     this.combatVignetteGfx = gfx;
 
-    const edgeW = 80;
+    const edgeW = 80 * S;
     // Left edge
     gfx.fillStyle(0xff0000, 0.25);
     gfx.fillRect(0, 0, edgeW, H);
@@ -768,25 +771,25 @@ export class HudScene extends Phaser.Scene {
 
     // Show a "+bonus gold" text below phase text
     const bonus = 50; // standard wave-clear bonus
-    this.goldBonusText = this.add.text(W / 2, 130, `+${bonus} gold 💰`, {
-      fontSize: '22px',
+    this.goldBonusText = this.add.text(W / 2, 130 * S, `+${bonus} gold 💰`, {
+      fontSize: `${22 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#ffd700',
       stroke: '#000000',
-      strokeThickness: 3,
+      strokeThickness: 3 * S,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(102).setAlpha(0);
 
     this.tweens.add({
       targets: this.goldBonusText,
       alpha: 1,
-      y: 125,
+      y: 125 * S,
       duration: 400,
       ease: 'Back.Out',
       onComplete: () => {
         this.tweens.add({
           targets: this.goldBonusText,
           alpha: 0,
-          y: 115,
+          y: 115 * S,
           duration: 800,
           delay: 1200,
           ease: 'Sine.In',

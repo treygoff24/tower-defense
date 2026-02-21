@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TowerConfig, ElementType } from '@td/shared';
 import { TOWER_CONFIGS } from '@td/shared';
+import { S } from '../dpr';
 
 interface TowerDisplayInfo {
   config: TowerConfig;
@@ -44,8 +45,8 @@ export class TowerPanel {
   private titleText: Phaser.GameObjects.Text | null = null;
 
   private towerItemContainers: Phaser.GameObjects.Container[] = [];
-  private panelWidth = 220;
-  private itemHeight = 70;
+  private panelWidth = 220 * S;
+  private itemHeight = 70 * S;
 
   /** Track the breathing-glow tween on the selected item */
   private selectionTween: Phaser.Tweens.Tween | null = null;
@@ -62,21 +63,22 @@ export class TowerPanel {
   // Background
   // ────────────────────────────────────────────────────────────────
   private createBackground(): void {
+    const bgH = 400 * S;
     if (this.scene.textures.exists('ui_wood_table')) {
       const woodBg = this.scene.add.image(0, 0, 'ui_wood_table');
-      woodBg.setDisplaySize(this.panelWidth, 400);
+      woodBg.setDisplaySize(this.panelWidth, bgH);
       woodBg.setAlpha(0.9);
       this.container.add(woodBg);
 
       // Dark overlay for contrast
       const overlay = this.scene.add.graphics();
       overlay.fillStyle(0x000000, 0.25);
-      overlay.fillRect(-this.panelWidth / 2, -200, this.panelWidth, 400);
+      overlay.fillRect(-this.panelWidth / 2, -bgH / 2, this.panelWidth, bgH);
       this.container.add(overlay);
     } else {
       // Fallback: plain rectangle
-      const bg = this.scene.add.rectangle(0, 0, this.panelWidth, 400, 0x1a1a2e, 0.9);
-      bg.setStrokeStyle(2, 0x444466);
+      const bg = this.scene.add.rectangle(0, 0, this.panelWidth, bgH, 0x1a1a2e, 0.9);
+      bg.setStrokeStyle(2 * S, 0x444466);
       this.container.add(bg);
     }
   }
@@ -89,8 +91,8 @@ export class TowerPanel {
     const color = ELEMENT_HEX[this.elementClass] ?? '#ffffff';
 
     this.titleText = this.scene.add
-      .text(0, -180, `${icon} TOWERS`, {
-        fontSize: '18px',
+      .text(0, -180 * S, `${icon} TOWERS`, {
+        fontSize: `${18 * S}px`,
         fontFamily: 'Arial',
         fontStyle: 'bold',
         color,
@@ -129,7 +131,7 @@ export class TowerPanel {
     this.stopSelectionTween();
 
     // Create new items
-    let yOffset = -140;
+    let yOffset = -140 * S;
 
     configs.forEach((config) => {
       const canAfford = config.costGold <= this.currentGold;
@@ -151,8 +153,8 @@ export class TowerPanel {
     y: number
   ): Phaser.GameObjects.Container {
     const container = this.scene.add.container(0, y);
-    const itemWidth = this.panelWidth - 20;
-    const iH = this.itemHeight - 5;
+    const itemWidth = this.panelWidth - 20 * S;
+    const iH = this.itemHeight - 5 * S;
 
     const elementBuildingKeys: Record<ElementType | 'shared', string> = {
       fire: 'building_yellow',
@@ -178,7 +180,7 @@ export class TowerPanel {
       bg.clear();
       const fill = selected ? 0x1e2a3a : hover ? 0x222238 : 0x181828;
       bg.fillStyle(fill, 1);
-      bg.fillRoundedRect(-itemWidth / 2, -iH / 2, itemWidth, iH, 6);
+      bg.fillRoundedRect(-itemWidth / 2, -iH / 2, itemWidth, iH, 6 * S);
 
       let borderColor: number;
       let borderAlpha: number;
@@ -195,8 +197,8 @@ export class TowerPanel {
         borderColor = 0x333355;
         borderAlpha = 0.5;
       }
-      bg.lineStyle(selected ? 2 : 1, borderColor, borderAlpha);
-      bg.strokeRoundedRect(-itemWidth / 2, -iH / 2, itemWidth, iH, 6);
+      bg.lineStyle((selected ? 2 : 1) * S, borderColor, borderAlpha);
+      bg.strokeRoundedRect(-itemWidth / 2, -iH / 2, itemWidth, iH, 6 * S);
     };
     drawBg(false, false, canAfford);
 
@@ -204,24 +206,24 @@ export class TowerPanel {
     const leftAccent = this.scene.add.graphics();
     if (canAfford) {
       leftAccent.fillStyle(elementColor, 0.7);
-      leftAccent.fillRoundedRect(-itemWidth / 2, -iH / 2 + 4, 2, iH - 8, 1);
+      leftAccent.fillRoundedRect(-itemWidth / 2, -iH / 2 + 4 * S, 2 * S, iH - 8 * S, S);
     }
 
     // ── Building thumbnail ────────────────────────────────────────
     const buildingKey = elementBuildingKeys[config.class] ?? 'building_blue';
-    const thumbSize = 36;
-    const thumbX = -itemWidth / 2 + thumbSize / 2 + 4;
+    const thumbSize = 36 * S;
+    const thumbX = -itemWidth / 2 + thumbSize / 2 + 4 * S;
     let thumb: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
     if (this.scene.textures.exists(buildingKey)) {
       thumb = this.scene.add.image(thumbX, 0, buildingKey);
-      (thumb as Phaser.GameObjects.Image).setScale(0.12);
+      (thumb as Phaser.GameObjects.Image).setScale(0.12 * S);
       (thumb as Phaser.GameObjects.Image).setAlpha(alpha);
     } else {
       thumb = this.scene.add.rectangle(
         thumbX,
         0,
         thumbSize,
-        thumbSize - 10,
+        thumbSize - 10 * S,
         elementColor,
         alpha * 0.5
       );
@@ -231,23 +233,23 @@ export class TowerPanel {
     const soldierKey = elementSoldierKeys[config.class] ?? 'ts_shared_idle';
     let soldierThumb: Phaser.GameObjects.Sprite | null = null;
     if (this.scene.textures.exists(soldierKey)) {
-      soldierThumb = this.scene.add.sprite(thumbX - 2, -4, soldierKey, 0);
+      soldierThumb = this.scene.add.sprite(thumbX - 2 * S, -4 * S, soldierKey, 0);
       // Tiny Swords units are 192px (or 320px for Lancer) — scale to fit thumbnail
       const isLancer = soldierKey.includes('ice');
-      soldierThumb.setScale(isLancer ? 0.09 : 0.15);
+      soldierThumb.setScale((isLancer ? 0.09 : 0.15) * S);
       soldierThumb.setAlpha(alpha);
     }
 
     // ── Tower name ────────────────────────────────────────────────
-    const textX = thumbX + thumbSize / 2 + 6;
-    const dotReserve = 18;
+    const textX = thumbX + thumbSize / 2 + 6 * S;
+    const dotReserve = 18 * S;
     const textMaxWidth = itemWidth / 2 - textX - dotReserve;
 
     const nameColor = canAfford ? '#ffffff' : '#554444';
-    const displayName = this.truncateName(config.name, textMaxWidth, 12);
+    const displayName = this.truncateName(config.name, textMaxWidth, 12 * S);
     const name = this.scene.add
-      .text(textX, -16, displayName, {
-        fontSize: '12px',
+      .text(textX, -16 * S, displayName, {
+        fontSize: `${12 * S}px`,
         fontFamily: '"Arial Black", Arial',
         fontStyle: 'bold',
         color: nameColor,
@@ -266,8 +268,8 @@ export class TowerPanel {
       costColor = '#cc4444';
     }
     const cost = this.scene.add
-      .text(textX, 2, costStr, {
-        fontSize: '11px',
+      .text(textX, 2 * S, costStr, {
+        fontSize: `${11 * S}px`,
         fontFamily: 'Arial',
         color: costColor,
       })
@@ -277,15 +279,15 @@ export class TowerPanel {
     const towerCfg = TOWER_CONFIGS[config.id];
     const rangeVal = towerCfg ? towerCfg.range : config.range;
     const rangeText = this.scene.add
-      .text(textX, 16, `📏 ${rangeVal} tiles`, {
-        fontSize: '10px',
+      .text(textX, 16 * S, `📏 ${rangeVal} tiles`, {
+        fontSize: `${10 * S}px`,
         fontFamily: 'Arial',
         color: '#888888',
       })
       .setOrigin(0, 0.5);
 
     // ── Element dot (right edge) ──────────────────────────────────
-    const dot = this.scene.add.circle(itemWidth / 2 - 10, 0, 5, elementColor, alpha);
+    const dot = this.scene.add.circle(itemWidth / 2 - 10 * S, 0, 5 * S, elementColor, alpha);
 
     const children: Phaser.GameObjects.GameObject[] = [
       bg,
@@ -418,8 +420,8 @@ export class TowerPanel {
   }
 
   private refreshAffordability(): void {
-    const itemWidth = this.panelWidth - 20;
-    const iH = this.itemHeight - 5;
+    const itemWidth = this.panelWidth - 20 * S;
+    const iH = this.itemHeight - 5 * S;
 
     this.towerItems.forEach((info, idx) => {
       const container = this.towerItemContainers[idx];
@@ -480,7 +482,7 @@ export class TowerPanel {
         leftAccent.clear();
         if (canAffordNow) {
           leftAccent.fillStyle(elementColor, 0.7);
-          leftAccent.fillRoundedRect(-itemWidth / 2, -iH / 2 + 4, 2, iH - 8, 1);
+          leftAccent.fillRoundedRect(-itemWidth / 2, -iH / 2 + 4 * S, 2 * S, iH - 8 * S, S);
         }
       }
 
@@ -546,7 +548,7 @@ export class TowerPanel {
 
       // Legacy compat
       const bg = (item as unknown as { bgRect: Phaser.GameObjects.Rectangle }).bgRect;
-      if (bg && bg.setStrokeStyle) bg.setStrokeStyle(1, 0x444466);
+      if (bg && bg.setStrokeStyle) bg.setStrokeStyle(S, 0x444466);
     });
   }
 

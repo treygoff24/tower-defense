@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { ElementType } from '@td/shared';
 import { GameClient } from '../GameClient';
+import { S } from '../dpr';
 
 interface ClassCardData {
   element: ElementType;
@@ -87,33 +88,32 @@ export class ClassSelectScene extends Phaser.Scene {
     vignette.setDepth(0);
 
     // ── Title section ─────────────────────────────────────────────
-    // Banner.png is 704×512 — preserve aspect ratio, use as title backdrop
     if (this.textures.exists('ui_banner')) {
-      const titleBanner = this.add.image(W / 2, 55, 'ui_banner');
-      titleBanner.setDisplaySize(420, 88); // small accent behind title text
+      const titleBanner = this.add.image(W / 2, 55 * S, 'ui_banner');
+      titleBanner.setDisplaySize(420 * S, 88 * S);
       titleBanner.setAlpha(0.55).setDepth(1);
     } else {
       const titleBg = this.add.graphics();
       titleBg.fillStyle(0x0a0a20, 0.85);
-      titleBg.fillRoundedRect(W / 2 - 300, 16, 600, 80, 12);
-      titleBg.lineStyle(1, 0x4444aa, 0.8);
-      titleBg.strokeRoundedRect(W / 2 - 300, 16, 600, 80, 12);
+      titleBg.fillRoundedRect(W / 2 - 300 * S, 16 * S, 600 * S, 80 * S, 12 * S);
+      titleBg.lineStyle(S, 0x4444aa, 0.8);
+      titleBg.strokeRoundedRect(W / 2 - 300 * S, 16 * S, 600 * S, 80 * S, 12 * S);
       titleBg.setDepth(1);
     }
 
-    const titleGlow = this.add.text(W / 2, 42, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
-      fontSize: '34px',
+    const titleGlow = this.add.text(W / 2, 42 * S, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
+      fontSize: `${34 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#110800',
     }).setOrigin(0.5).setAlpha(0.45).setDepth(1);
 
-    const title = this.add.text(W / 2, 40, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
-      fontSize: '34px',
+    const title = this.add.text(W / 2, 40 * S, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
+      fontSize: `${34 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffd700',
       stroke: '#441100',
-      strokeThickness: 4,
+      strokeThickness: 4 * S,
     }).setOrigin(0.5).setDepth(2);
 
     this.tweens.add({
@@ -126,8 +126,8 @@ export class ClassSelectScene extends Phaser.Scene {
       ease: 'Sine.InOut',
     });
 
-    this.add.text(W / 2, 76, "Select a class \u2014 your towers share your element's passive", {
-      fontSize: '14px',
+    this.add.text(W / 2, 76 * S, "Select a class \u2014 your towers share your element's passive", {
+      fontSize: `${14 * S}px`,
       fontFamily: 'Arial',
       fontStyle: 'italic',
       color: '#6677aa',
@@ -135,18 +135,18 @@ export class ClassSelectScene extends Phaser.Scene {
 
     // Subtle divider below title (small ribbon accent)
     if (this.textures.exists('ui_ribbon_small')) {
-      const ribbon = this.add.image(W / 2, 100, 'ui_ribbon_small');
-      ribbon.setDisplaySize(300, 16);
+      const ribbon = this.add.image(W / 2, 100 * S, 'ui_ribbon_small');
+      ribbon.setDisplaySize(300 * S, 16 * S);
       ribbon.setAlpha(0.35).setDepth(2);
     }
 
     // ── Class cards ───────────────────────────────────────────────
-    const cardWidth = 210;
-    const cardHeight = 360;
-    const spacing = 30;
+    const cardWidth = 210 * S;
+    const cardHeight = 360 * S;
+    const spacing = 30 * S;
     const totalWidth = CLASS_CARDS.length * cardWidth + (CLASS_CARDS.length - 1) * spacing;
     const startX = (W - totalWidth) / 2 + cardWidth / 2;
-    const cardY = H / 2 + 10;
+    const cardY = H / 2 + 10 * S;
 
     CLASS_CARDS.forEach((classData, index) => {
       const cardX = startX + index * (cardWidth + spacing);
@@ -155,7 +155,7 @@ export class ClassSelectScene extends Phaser.Scene {
     });
 
     // ── Ready button ──────────────────────────────────────────────
-    this.readyButton = this.createReadyButton(W / 2, H - 52);
+    this.readyButton = this.createReadyButton(W / 2, H - 52 * S);
 
     // Fade in
     this.cameras.main.fadeIn(400, 0, 0, 0);
@@ -170,12 +170,12 @@ export class ClassSelectScene extends Phaser.Scene {
     for (let i = 0; i < 100; i++) {
       const sx = Math.random() * W;
       const sy = Math.random() * H;
-      const size = Math.random() < 0.8 ? 1 : 2;
+      const size = (Math.random() < 0.8 ? 1 : 2) * S;
       g.fillStyle(0xffffff, 0.2 + Math.random() * 0.4);
       g.fillRect(sx, sy, size, size);
     }
     for (let i = 0; i < 10; i++) {
-      const star = this.add.circle(Math.random() * W, Math.random() * H, 1.5, 0xffffff, 0.7).setDepth(0);
+      const star = this.add.circle(Math.random() * W, Math.random() * H, 1.5 * S, 0xffffff, 0.7).setDepth(0);
       this.tweens.add({
         targets: star,
         alpha: 0.1,
@@ -203,124 +203,121 @@ export class ClassSelectScene extends Phaser.Scene {
 
     // ── Card background ───────────────────────────────────────────
     const bg = this.add.rectangle(0, 0, width, height, 0x14142a);
-    bg.setStrokeStyle(2, classData.color, 0.85);
+    bg.setStrokeStyle(2 * S, classData.color, 0.85);
     bg.setInteractive({ useHandCursor: true });
 
     // ── Image viewport (upper portion of card) ────────────────────
-    const viewH = 150;
+    const viewH = 150 * S;
     const viewBg = this.add.rectangle(0, -height / 2 + viewH / 2, width, viewH, 0x0a0a1a);
 
     // ── Building image (top-center of view area, behind soldier) ─
-    const buildingY = -height / 2 + viewH / 2;   // center of view area (y≈-105)
+    const buildingY = -height / 2 + viewH / 2;
     let buildingObj: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
     if (this.textures.exists(classData.buildingKey)) {
       buildingObj = this.add.image(0, buildingY, classData.buildingKey);
-      (buildingObj as Phaser.GameObjects.Image).setScale(0.28);
+      (buildingObj as Phaser.GameObjects.Image).setScale(0.28 * S);
       (buildingObj as Phaser.GameObjects.Image).setOrigin(0.5, 0.5);
-      // Subtle tint from element color
       (buildingObj as Phaser.GameObjects.Image).setTint(
         Phaser.Display.Color.IntegerToColor(classData.color)
           .lighten(80).color
       );
     } else {
-      buildingObj = this.add.rectangle(0, buildingY, 60, 80, classData.color, 0.4);
+      buildingObj = this.add.rectangle(0, buildingY, 60 * S, 80 * S, classData.color, 0.4);
     }
 
     // ── Soldier sprite (in front of building, lower in view) ─────
-    const soldierY = -height / 2 + viewH - 40;   // below building (y≈-70)
+    const soldierY = -height / 2 + viewH - 40 * S;
     let soldierSprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null = null;
     if (this.textures.exists(classData.soldierKey)) {
-      soldierSprite = this.add.sprite(-4, soldierY, classData.soldierKey, 0);
-      // Tiny Swords units are 192×192 (or 320×320 for Lancer) — scale to fit card view
+      soldierSprite = this.add.sprite(-4 * S, soldierY, classData.soldierKey, 0);
       const isLancer = classData.soldierKey.includes('ice');
-      soldierSprite.setScale(isLancer ? 0.45 : 0.7);
-      // Play idle animation if registered
+      soldierSprite.setScale((isLancer ? 0.45 : 0.7) * S);
       const idleAnim = `${classData.soldierKey}_idle`;
       if (this.anims.exists(idleAnim)) {
         soldierSprite.play(idleAnim);
       }
     } else {
-      soldierSprite = this.add.circle(-4, soldierY, 14, classData.color);
+      soldierSprite = this.add.circle(-4 * S, soldierY, 14 * S, classData.color);
     }
 
     // ── Element badge (corner pill) ───────────────────────────────
     const badgeBg = this.add.graphics();
     badgeBg.fillStyle(classData.color, 0.9);
-    badgeBg.fillRoundedRect(width / 2 - 46, -height / 2 + 6, 40, 22, 6);
-    const badgeText = this.add.text(width / 2 - 26, -height / 2 + 10, classData.icon, {
-      fontSize: '14px',
+    badgeBg.fillRoundedRect(width / 2 - 46 * S, -height / 2 + 6 * S, 40 * S, 22 * S, 6 * S);
+    const badgeText = this.add.text(width / 2 - 26 * S, -height / 2 + 10 * S, classData.icon, {
+      fontSize: `${14 * S}px`,
     }).setOrigin(0.5, 0);
 
     // ── Divider ───────────────────────────────────────────────────
-    const dividerY = -height / 2 + viewH + 1;
+    const dividerY = -height / 2 + viewH + S;
     const divider = this.add.graphics();
-    divider.lineStyle(1, classData.color, 0.5);
-    divider.lineBetween(-width / 2 + 10, dividerY, width / 2 - 10, dividerY);
+    divider.lineStyle(S, classData.color, 0.5);
+    divider.lineBetween(-width / 2 + 10 * S, dividerY, width / 2 - 10 * S, dividerY);
 
     // ── Class name ────────────────────────────────────────────────
-    const nameY = -height / 2 + viewH + 22;
+    const nameY = -height / 2 + viewH + 22 * S;
     const name = this.add.text(0, nameY, classData.name, {
-      fontSize: '20px',
+      fontSize: `${20 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffffff',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 2 * S,
     }).setOrigin(0.5, 0);
 
     // ── Element type pill ─────────────────────────────────────────
-    const elementPillY = nameY + 28;
+    const elementPillY = nameY + 28 * S;
     const pillBg = this.add.graphics();
     pillBg.fillStyle(classData.color, 0.18);
-    pillBg.lineStyle(1, classData.color, 0.6);
-    pillBg.fillRoundedRect(-38, elementPillY - 1, 76, 18, 9);
-    pillBg.strokeRoundedRect(-38, elementPillY - 1, 76, 18, 9);
-    const elementLabel = this.add.text(0, elementPillY + 1, classData.element.toUpperCase(), {
-      fontSize: '11px',
+    pillBg.lineStyle(S, classData.color, 0.6);
+    pillBg.fillRoundedRect(-38 * S, elementPillY - S, 76 * S, 18 * S, 9 * S);
+    pillBg.strokeRoundedRect(-38 * S, elementPillY - S, 76 * S, 18 * S, 9 * S);
+    const elementLabel = this.add.text(0, elementPillY + S, classData.element.toUpperCase(), {
+      fontSize: `${11 * S}px`,
       fontFamily: 'Arial',
       color: '#' + classData.color.toString(16).padStart(6, '0'),
       fontStyle: 'bold',
     }).setOrigin(0.5, 0);
 
     // ── Description ───────────────────────────────────────────────
-    const descY = elementPillY + 26;
+    const descY = elementPillY + 26 * S;
     const description = this.add.text(0, descY, classData.description, {
-      fontSize: '12px',
+      fontSize: `${12 * S}px`,
       fontFamily: 'Arial',
       color: '#9999bb',
-      wordWrap: { width: width - 28 },
+      wordWrap: { width: width - 28 * S },
       align: 'center',
     }).setOrigin(0.5, 0);
 
     // ── Passive label ─────────────────────────────────────────────
-    const passiveY = descY + description.height + 8;
+    const passiveY = descY + description.height + 8 * S;
     const passivePillBg = this.add.graphics();
     passivePillBg.fillStyle(0x222244, 1);
-    passivePillBg.lineStyle(1, classData.color, 0.4);
-    passivePillBg.fillRoundedRect(-width / 2 + 12, passiveY - 2, width - 24, 20, 5);
-    passivePillBg.strokeRoundedRect(-width / 2 + 12, passiveY - 2, width - 24, 20, 5);
-    const passiveText = this.add.text(-width / 2 + 20, passiveY + 1, `PASSIVE: ${classData.passive}`, {
-      fontSize: '10px',
+    passivePillBg.lineStyle(S, classData.color, 0.4);
+    passivePillBg.fillRoundedRect(-width / 2 + 12 * S, passiveY - 2 * S, width - 24 * S, 20 * S, 5 * S);
+    passivePillBg.strokeRoundedRect(-width / 2 + 12 * S, passiveY - 2 * S, width - 24 * S, 20 * S, 5 * S);
+    const passiveText = this.add.text(-width / 2 + 20 * S, passiveY + S, `PASSIVE: ${classData.passive}`, {
+      fontSize: `${10 * S}px`,
       fontFamily: 'Arial',
       color: '#' + classData.color.toString(16).padStart(6, '0'),
     }).setOrigin(0, 0);
 
     // ── Tower list ────────────────────────────────────────────────
-    const towerSectionY = height / 2 - 70;
+    const towerSectionY = height / 2 - 70 * S;
     const towerDivider = this.add.graphics();
-    towerDivider.lineStyle(1, 0x333355, 1);
-    towerDivider.lineBetween(-width / 2 + 10, towerSectionY - 4, width / 2 - 10, towerSectionY - 4);
+    towerDivider.lineStyle(S, 0x333355, 1);
+    towerDivider.lineBetween(-width / 2 + 10 * S, towerSectionY - 4 * S, width / 2 - 10 * S, towerSectionY - 4 * S);
 
     const towersLabel = this.add.text(0, towerSectionY, 'TOWERS', {
-      fontSize: '10px',
+      fontSize: `${10 * S}px`,
       fontFamily: 'Arial',
       color: '#555577',
       fontStyle: 'bold',
     }).setOrigin(0.5, 0);
 
     const towerTexts = classData.towers.map((tower, ti) =>
-      this.add.text(0, towerSectionY + 14 + ti * 16, `\u2022 ${tower}`, {
-        fontSize: '11px',
+      this.add.text(0, towerSectionY + 14 * S + ti * 16 * S, `\u2022 ${tower}`, {
+        fontSize: `${11 * S}px`,
         fontFamily: 'Arial',
         color: '#' + classData.color.toString(16).padStart(6, '0'),
       }).setOrigin(0.5, 0).setAlpha(0.9)
@@ -437,11 +434,11 @@ export class ClassSelectScene extends Phaser.Scene {
     // Glow border
     const cd = (container as unknown as { classData: ClassCardData }).classData;
     glowBorder.clear();
-    glowBorder.lineStyle(6, cd.color, 0.3);
-    glowBorder.strokeRect(-cd.color, -baseY, 100, 100); // placeholder — we draw it properly below
+    glowBorder.lineStyle(6 * S, cd.color, 0.3);
+    glowBorder.strokeRect(-cd.color, -baseY, 100 * S, 100 * S); // placeholder — we draw it properly below
     glowBorder.clear();
-    const w = 210; const h = 360;
-    glowBorder.lineStyle(5, cd.color, 0.25);
+    const w = 210 * S; const h = 360 * S;
+    glowBorder.lineStyle(5 * S, cd.color, 0.25);
     glowBorder.strokeRect(-w / 2, -h / 2, w, h);
     glowBorder.setVisible(true);
 
@@ -476,42 +473,43 @@ export class ClassSelectScene extends Phaser.Scene {
 
   private createReadyButton(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y).setDepth(10);
-    const btnW = 240;
-    const btnH = 52;
+    const btnW = 240 * S;
+    const btnH = 52 * S;
+    const r = 10 * S;
 
     const bg = this.add.graphics();
     const drawBtn = (state: 'disabled' | 'normal' | 'hover' | 'pressed') => {
       bg.clear();
       // Shadow
       bg.fillStyle(0x000000, 0.3);
-      bg.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 3, btnW, btnH, 10);
+      bg.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + 3 * S, btnW, btnH, r);
       // Body
       const fills: Record<string, number> = { disabled: 0x1a2233, normal: 0x004d28, hover: 0x006633, pressed: 0x003d1a };
       bg.fillStyle(fills[state] ?? 0x1a2233, 1);
-      bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
       // Top highlight
       if (state !== 'disabled') {
         bg.fillStyle(0xffffff, state === 'hover' ? 0.12 : 0.06);
-        bg.fillRoundedRect(-btnW / 2 + 2, -btnH / 2 + 1, btnW - 4, btnH / 2 - 2, { tl: 8, tr: 8, bl: 0, br: 0 });
+        bg.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + S, btnW - 4 * S, btnH / 2 - 2 * S, { tl: 8 * S, tr: 8 * S, bl: 0, br: 0 });
       }
       // Border
       const borders: Record<string, [number, number]> = {
         disabled: [0x334455, 0.5], normal: [0x00cc66, 0.8], hover: [0x00ff88, 1], pressed: [0x00aa55, 1],
       };
       const [bc, ba] = borders[state] ?? [0x334455, 0.5];
-      bg.lineStyle(2, bc, ba);
-      bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 10);
+      bg.lineStyle(2 * S, bc, ba);
+      bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
     };
     drawBtn('disabled');
     this.readyBg = bg;
 
     this.readyText = this.add.text(0, 0, 'SELECT A CLASS', {
-      fontSize: '18px',
+      fontSize: `${18 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#556677',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 2 * S,
     }).setOrigin(0.5);
 
     const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)

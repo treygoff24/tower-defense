@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ASSET_MANIFEST } from '../assets/manifest';
+import { S } from '../dpr';
 
 export class BootScene extends Phaser.Scene {
   private loadingBar!: Phaser.GameObjects.Graphics;
@@ -15,6 +16,19 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     this.createAnimations();
+
+    // Apply NEAREST filtering to pixel-art textures only (keeps smooth filtering for Tiny Swords art, text, and UI)
+    const pixelArtKeys = [
+      'enemy_grunt', 'enemy_tank', 'enemy_flyer', 'enemy_boss', 'enemy_runner', 'enemy_invisible',
+      'fx_big_explosion', 'fx_small_explosion', 'fx_muzzle', 'fx_impact', 'fx_smoke', 'fx_hit_sparks',
+      'proj_bullet', 'proj_grenade', 'proj_rpg',
+    ];
+    for (const key of pixelArtKeys) {
+      if (this.textures.exists(key)) {
+        this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      }
+    }
+
     this.time.delayedCall(200, () => {
       this.scene.start('LobbyScene');
     });
@@ -28,29 +42,29 @@ export class BootScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0d0d1a');
 
     // Title
-    this.add.text(cx, cy - 80, '⚔ ELEMENT DEFENSE ⚔', {
-      fontSize: '36px',
+    this.add.text(cx, cy - 80 * S, '⚔ ELEMENT DEFENSE ⚔', {
+      fontSize: `${36 * S}px`,
       fontFamily: 'Arial Black, Arial',
       color: '#ffd700',
       stroke: '#000000',
-      strokeThickness: 4,
+      strokeThickness: 4 * S,
     }).setOrigin(0.5);
 
-    this.add.text(cx, cy - 40, 'LOADING...', {
-      fontSize: '18px',
+    this.add.text(cx, cy - 40 * S, 'LOADING...', {
+      fontSize: `${18 * S}px`,
       fontFamily: 'Arial',
       color: '#aaaaaa',
     }).setOrigin(0.5);
 
     // Bar background
-    this.add.rectangle(cx, cy, 400, 28, 0x222244).setOrigin(0.5);
-    this.add.rectangle(cx, cy, 402, 30, 0x4444aa, 0).setStrokeStyle(2, 0x6666ff);
+    const barW = 400 * S;
+    const barH = 28 * S;
+    this.add.rectangle(cx, cy, barW, barH, 0x222244).setOrigin(0.5);
+    this.add.rectangle(cx, cy, barW + 2 * S, barH + 2 * S, 0x4444aa, 0).setStrokeStyle(2 * S, 0x6666ff);
 
     this.loadingBar = this.add.graphics();
 
     this.load.on('progress', (v: number) => {
-      const barW = 400;
-      const barH = 28;
       this.loadingBar.clear();
       this.loadingBar.fillStyle(0x00ff88, 1);
       this.loadingBar.fillRect(cx - barW / 2, cy - barH / 2, barW * v, barH);
