@@ -84,6 +84,7 @@ export interface EnemyState {
   progress: number; // 0-1 between current and next waypoint
   statuses: EnemyStatus[];
   alive: boolean;
+  resistances?: string[];
 }
 
 export interface EnemyStatus {

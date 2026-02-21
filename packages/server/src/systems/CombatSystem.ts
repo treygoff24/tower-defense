@@ -216,12 +216,22 @@ export class CombatSystem {
     const damage = this.getDamage(tower);
     const splashTargets = this.getSplashTargets(tower, target, enemies);
 
+    const config = this.configs[tower.configId];
+    const towerElement = config?.class !== 'shared' ? config?.class : undefined;
+
+    // Filter out on-hit elemental effects if the target is resistant to the tower's element
+    const allOnHitEffects = this.getOnHitEffects(tower);
+    const onHitEffects = allOnHitEffects.filter((effect) => {
+      if (!effect.element) return true;
+      return !towerElement || !target.resistances?.includes(towerElement);
+    });
+
     return {
       towerId: tower.instanceId,
       targetId: target.instanceId,
       damage,
       splashTargetIds: splashTargets.map((e) => e.instanceId),
-      onHitEffects: this.getOnHitEffects(tower),
+      onHitEffects,
     };
   }
 }
