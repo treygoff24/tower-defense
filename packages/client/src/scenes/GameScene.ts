@@ -16,6 +16,7 @@ interface TowerVisual {
   soldier: Phaser.GameObjects.Sprite;
   rangeCircle: Phaser.GameObjects.Graphics;
   aura: Phaser.GameObjects.Ellipse;
+  ownerRing?: Phaser.GameObjects.Arc;
   selected: boolean;
   configId: string;
   tierIndicator?: Phaser.GameObjects.Graphics;
@@ -670,8 +671,9 @@ export class GameScene extends Phaser.Scene {
     this.ghostGraphics.clear();
     this.rangePreview.clear();
 
-    // Range preview (soft blue circle)
-    const rangePixels = 3 * TILE_SIZE; // default range estimate
+    // Range preview (soft blue circle) — use actual tower config range
+    const configRange = TOWER_CONFIGS[this.selectedTowerId]?.range ?? 3;
+    const rangePixels = configRange * TILE_SIZE;
     this.rangePreview.fillStyle(valid ? 0x00aaff : 0xff3300, 0.08);
     this.rangePreview.fillCircle(cx, cy, rangePixels);
     this.rangePreview.lineStyle(1, valid ? 0x00aaff : 0xff3300, 0.4);
@@ -877,6 +879,7 @@ export class GameScene extends Phaser.Scene {
         tv.base.setPosition(px, py);
         tv.soldier.setPosition(px, py - 8);
         tv.aura.setPosition(px, py + 4);
+        tv.ownerRing?.setPosition(px, py + 6);
         // Update tier indicator if tower was upgraded
         const currentTier = tower.tier ?? 1;
         const hasTierIndicator = !!tv.tierIndicator;
@@ -957,7 +960,16 @@ export class GameScene extends Phaser.Scene {
       tierIndicator = this.createTierIndicator(px, py, tower.tier);
     }
 
-    return { base, soldier, rangeCircle, aura, selected: false, configId: tower.configId, tierIndicator };
+    // Owner ring — colored circle at tower base to indicate player ownership
+    const PLAYER_COLORS = [0x4488ff, 0xff4444, 0x44cc44, 0xffcc00];
+    const playerIds = Object.keys(this.lastState?.players ?? {});
+    const ownerIdx = playerIds.indexOf(tower.ownerId);
+    const ringColor = PLAYER_COLORS[ownerIdx >= 0 ? ownerIdx : 0];
+    const ownerRing = this.add.circle(px, py + 6, 16, ringColor, 0.35);
+    ownerRing.setStrokeStyle(2, ringColor, 0.6);
+    ownerRing.setDepth(SHADOW_DEPTH + 0.3);
+
+    return { base, soldier, rangeCircle, aura, ownerRing, selected: false, configId: tower.configId, tierIndicator };
   }
 
   private createTierIndicator(px: number, py: number, tier: number): Phaser.GameObjects.Graphics {
@@ -979,6 +991,7 @@ export class GameScene extends Phaser.Scene {
     tv.soldier.destroy();
     tv.rangeCircle.destroy();
     tv.aura.destroy();
+    tv.ownerRing?.destroy();
     tv.tierIndicator?.destroy();
   }
 
