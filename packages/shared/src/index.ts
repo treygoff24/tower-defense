@@ -253,6 +253,16 @@ export type ServerEvent =
   | { type: 'error'; message: string };
 
 // ── Constants ──────────────────────────────────────────────
+export const ENEMY_BASE_DAMAGE: Record<EnemyType, number> = {
+  grunt: 1,
+  runner: 1,
+  tank: 3,
+  flyer: 2,
+  invisible: 2,
+  caster: 2,
+  boss: 10,
+};
+
 export const TICK_RATE = 20; // server ticks per second
 export const TICK_DURATION_MS = 1000 / TICK_RATE;
 export const SNAPSHOT_INTERVAL_MS = 250;
