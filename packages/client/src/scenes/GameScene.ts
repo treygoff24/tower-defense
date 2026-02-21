@@ -5,8 +5,10 @@ import { GameClient } from '../GameClient';
 import { ENEMY_ASSETS, TOWER_ASSETS } from '../assets/manifest';
 import type { TowerAssetInfo } from '../assets/manifest';
 import { AudioManager } from '../audio/AudioManager';
+import { TowerAnimator } from '../effects/TowerAnimator';
+import { ProjectileManager } from '../effects/ProjectileManager';
+import { EnemyInspector } from '../ui/EnemyInspector';
 import { DeathAnimator } from '../effects/DeathAnimator';
-
 // ─── Per-tower runtime state ─────────────────────────────────────────────────
 interface TowerVisual {
   base: Phaser.GameObjects.Image;
@@ -54,6 +56,8 @@ export class GameScene extends Phaser.Scene {
 
   // ── Effects ────────────────────────────────────────────────────────
   private deathAnimator!: DeathAnimator;
+  private towerAnimator!: TowerAnimator;
+  private projectileManager!: ProjectileManager;
 
   // ── Visuals ────────────────────────────────────────────────────────
   private towers: Map<string, TowerVisual> = new Map();
@@ -76,6 +80,10 @@ export class GameScene extends Phaser.Scene {
   private currentPhase: GamePhase = 'prep';
   private selectedTowerId: string | null = null;
 
+  // ── Enemy Inspector ───────────────────────────────────────────────
+  private enemyInspector: EnemyInspector | null = null;
+  private pendingEnemyClickId: string | null = null;
+
   // ── Timing ────────────────────────────────────────────────────────
   private cloudTimer = 0;
   private lastBaseHp = -1;
@@ -92,6 +100,8 @@ export class GameScene extends Phaser.Scene {
 
     // Effects
     this.deathAnimator = new DeathAnimator(this);
+    this.towerAnimator = new TowerAnimator(this);
+    this.projectileManager = new ProjectileManager(this);
 
     // Layering objects
     this.tileLayer = this.add.group();
@@ -113,6 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.events.on('enemy-killed', this.handleEnemyKilled, this);
     this.events.on('base-damaged', this.handleBaseDamaged, this);
     this.events.on('tower-sold-visual', this.handleTowerSoldVisual, this);
+    this.events.on('tower_fired', this.handleTowerFired, this);
 
     this.setupDemoMap();
     this.spawnFloatingClouds();
@@ -130,6 +141,11 @@ export class GameScene extends Phaser.Scene {
           this.currentPhase = state.phase;
         }
         this.syncState(state);
+
+        // Update enemy inspector (track position + auto-dismiss on death)
+        if (this.enemyInspector) {
+          this.enemyInspector.update(state.enemies);
+        }
 
         // Screenshake when base HP drops
         if (this.lastBaseHp !== -1 && state.baseHp < this.lastBaseHp) {
@@ -666,6 +682,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleTileClick(pointer: Phaser.Input.Pointer): void {
+    // ── Enemy inspector: sprite pointerdown fires first and sets this flag ──
+    if (this.pendingEnemyClickId !== null) {
+      const enemyId = this.pendingEnemyClickId;
+      this.pendingEnemyClickId = null;
+      this.openEnemyInspector(enemyId);
+      return;
+    }
+
+    // Clicking elsewhere dismisses any open enemy inspector
+    if (this.enemyInspector) {
+      this.closeEnemyInspector();
+      // Don't return — allow normal tile click processing to continue
+    }
+
     const tileX = Math.floor(pointer.worldX / TILE_SIZE);
     const tileY = Math.floor(pointer.worldY / TILE_SIZE);
 
@@ -1000,6 +1030,13 @@ export class GameScene extends Phaser.Scene {
     const sprite = this.add.sprite(px, py, key);
     sprite.setScale(scale);
     sprite.setDepth(ENTITY_DEPTH + py * 0.001);
+
+    // Make interactive for enemy inspector
+    sprite.setInteractive();
+    sprite.setData('enemyId', _id);
+    sprite.on('pointerdown', () => {
+      this.pendingEnemyClickId = _id;
+    });
 
     // Pick walk or idle animation
     if (this.anims.exists(walkAnim)) {
@@ -1411,6 +1448,16 @@ export class GameScene extends Phaser.Scene {
     // Camera shake and red flash are already handled in update() via state diff
   }
 
+  private handleTowerFired(data: { towerId: string; targetId: string; damage: number; element?: string; towerX: number; towerY: number; targetX: number; targetY: number }): void {
+    // Projectile visual
+    this.projectileManager.fire(data);
+    // Tower attack animation
+    const tv = this.towers.get(data.towerId);
+    if (tv) {
+      this.towerAnimator.playAttack(tv.base, data.element);
+    }
+  }
+
   private handleTowerSoldVisual(data: { instanceId: string; goldRefund: number }): void {
     const tv = this.towers.get(data.instanceId);
     if (!tv) return;
@@ -1437,6 +1484,33 @@ export class GameScene extends Phaser.Scene {
 
     // Play sell sound
     this.audio.playSellTower();
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Enemy Inspector
+  // ─────────────────────────────────────────────────────────────────
+
+  private openEnemyInspector(enemyId: string): void {
+    // Only one inspector at a time
+    if (this.enemyInspector) {
+      this.closeEnemyInspector();
+    }
+
+    // Look up enemy state from latest snapshot
+    const gameClient = this.registry.get('gameClient') as GameClient | undefined;
+    const state = gameClient?.getLatestState();
+    const enemy = state?.enemies[enemyId];
+    if (!enemy || !enemy.alive) return;
+
+    this.enemyInspector = new EnemyInspector(this, enemy, () => {
+      this.closeEnemyInspector();
+    });
+  }
+
+  private closeEnemyInspector(): void {
+    const inspector = this.enemyInspector;
+    this.enemyInspector = null;
+    inspector?.destroy();
   }
 
   // ─────────────────────────────────────────────────────────────────
