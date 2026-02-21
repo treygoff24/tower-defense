@@ -14,12 +14,16 @@ type ChatMessageCallback = (event: ChatMessagePayload) => void;
 export type PingMarkerPayload = Extract<ServerEvent, { type: 'ping_marker' }>;
 type PingMarkerCallback = (event: PingMarkerPayload) => void;
 
+export type WaveCompletedPayload = Extract<ServerEvent, { type: 'wave_completed' }>;
+type WaveCompletedCallback = (event: WaveCompletedPayload) => void;
+
 export class NetworkManager {
   private socket: Socket | null = null;
   private onSnapshot: SnapshotCallback | null = null;
   private onTowerFiredCallback: TowerFiredCallback | null = null;
   private onChatMessageCallback: ChatMessageCallback | null = null;
   private onPingMarkerCallback: PingMarkerCallback | null = null;
+  private onWaveCompletedCallback: WaveCompletedCallback | null = null;
   private serverUrl: string;
 
   constructor(serverUrl = 'http://localhost:3001') {
@@ -56,6 +60,8 @@ export class NetworkManager {
           this.onChatMessageCallback?.(event as ChatMessagePayload);
         } else if (event.type === 'ping_marker') {
           this.onPingMarkerCallback?.(event as PingMarkerPayload);
+        } else if (event.type === 'wave_completed') {
+          this.onWaveCompletedCallback?.(event as WaveCompletedPayload);
         }
       });
 
@@ -79,6 +85,10 @@ export class NetworkManager {
 
   onPingMarker(callback: PingMarkerCallback): void {
     this.onPingMarkerCallback = callback;
+  }
+
+  onWaveCompleted(callback: WaveCompletedCallback): void {
+    this.onWaveCompletedCallback = callback;
   }
 
   sendCommand(command: ClientCommand): Promise<{ ok: boolean; reason?: string }> {

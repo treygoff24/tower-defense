@@ -54,6 +54,11 @@ export class GameClient {
     this.network.onPingMarker((event) => {
       this.gameScene?.events.emit('ping_marker', { x: event.x, y: event.y });
     });
+
+    // Relay wave_completed events → HudScene
+    this.network.onWaveCompleted((event) => {
+      this.hudScene?.receiveWaveCompleted(event.goldReward);
+    });
   }
 
   private launchResultScene(state: GameState): void {

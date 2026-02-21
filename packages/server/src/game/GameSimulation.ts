@@ -294,6 +294,9 @@ export class GameSimulation {
       const waveConfig = this.waveScheduler.getCurrentWaveConfig();
       if (waveConfig) {
         this.economy.addWaveBonus(this.waveScheduler.currentWave, this.room.playerCount);
+        const waveNum = this.waveScheduler.currentWave;
+        const goldReward = (40 + 10 * waveNum) * this.room.playerCount;
+        this.pendingEvents.push({ type: 'wave_completed', wave: waveNum, goldReward });
       }
 
       if (!this.waveScheduler.hasMoreWaves()) {

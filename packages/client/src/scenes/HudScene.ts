@@ -56,6 +56,7 @@ export class HudScene extends Phaser.Scene {
   private startWavePulseTween: Phaser.Tweens.Tween | null = null;
   private prepPhasePulseTween: Phaser.Tweens.Tween | null = null;
   private goldBonusText: Phaser.GameObjects.Text | null = null;
+  private lastWaveGoldReward = 50;
 
   /* Wave banner */
   private lastBannerWave = 0;
@@ -612,7 +613,8 @@ export class HudScene extends Phaser.Scene {
 
     // Look up wave config
     const waveConfig: WaveConfig | undefined = WAVE_CONFIGS.find((wc) => wc.wave === wave);
-    const goldBonus = wave * 10 + 20;
+    const playerCount = Object.keys(this.lastKnownState?.players ?? {}).length || 1;
+    const goldBonus = (40 + 10 * wave) * playerCount;
 
     // Build enemy summary string with icons
     const ENEMY_ICONS: Record<string, string> = {
@@ -978,7 +980,7 @@ export class HudScene extends Phaser.Scene {
     }
 
     // Show a "+bonus gold" text below phase text
-    const bonus = 50; // standard wave-clear bonus
+    const bonus = this.lastWaveGoldReward;
     this.goldBonusText = this.add.text(W / 2, 130, `+${bonus} gold 💰`, {
       fontSize: '22px',
       fontFamily: '"Arial Black", Arial',
@@ -1081,6 +1083,11 @@ export class HudScene extends Phaser.Scene {
       this.chatInputEl.remove();
       this.chatInputEl = null;
     }
+  }
+
+  /** Called by GameClient when a wave_completed event is received. */
+  receiveWaveCompleted(goldReward: number): void {
+    this.lastWaveGoldReward = goldReward;
   }
 
   /** Called by GameClient when a chat_message event is received. */

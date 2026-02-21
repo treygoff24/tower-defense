@@ -77,8 +77,8 @@ io.on('connection', (socket) => {
         case 'upgrade_tower': {
           const upgradeResult = sim.upgradeTower(socket.id, command.instanceId);
           if (upgradeResult.ok && upgradeResult.newTier !== undefined) {
-            // Emit tower_upgraded ServerEvent to the requesting client
-            socket.emit('event', {
+            // Emit tower_upgraded ServerEvent to all clients
+            io.emit('event', {
               type: 'tower_upgraded',
               instanceId: command.instanceId,
               newTier: upgradeResult.newTier,
