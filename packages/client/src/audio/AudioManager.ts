@@ -1,12 +1,23 @@
 /**
  * AudioManager — Procedural Web Audio engine.
  * No audio files needed: all SFX are synthesised via OscillatorNode / BiquadFilterNode.
+ *
+ * v2: All sounds are routed through a SoundPool that enforces per-category
+ * polyphony limits (max 4 simultaneous) and volume normalisation (1/√N).
  */
+import { SoundPool, type PooledInstance } from './SoundPool';
+
 export class AudioManager {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private muted = false;
   private volume = 0.5;
+
+  /** Shared pool — enforces polyphony limits across all categories. */
+  private readonly pool = new SoundPool(4);
+
+  /** Monotonic counter to order instances. */
+  private _tick = 0;
 
   bind(_scene: Phaser.Scene): void {
     // Lazily create AudioContext on first user gesture
@@ -33,69 +44,81 @@ export class AudioManager {
   // ─────────────────────────────────────────────────────────────────
 
   playTowerPlace(): void {
-    // Rising "thunk" + tone
-    this.playTone(180, 0.08, 'square', 0.18);
-    this.playTone(440, 0.06, 'sine', 0.08, 0.05);
+    this.playEvent('tower-place', (dest, vol) => {
+      this.playTone(180, 0.08, 'square', 0.18 * vol, 0, 0, dest);
+      this.playTone(440, 0.06, 'sine', 0.08 * vol, 0.05, 0, dest);
+    });
   }
 
   playTowerShoot(): void {
-    // Short high-frequency burst
-    this.playNoise(0.04, 0.12, 3200, 'highpass');
+    this.playEvent('tower-shoot', (dest, vol) => {
+      this.playNoise(0.04, 0.12, 3200, 'highpass', 0, dest, vol);
+    });
   }
 
   playGrenadeShoot(): void {
-    // Low thud + whistle
-    this.playTone(80, 0.12, 'sawtooth', 0.22, 0, 40);
+    this.playEvent('grenade-shoot', (dest, vol) => {
+      this.playTone(80, 0.12, 'sawtooth', 0.22 * vol, 0, 40, dest);
+    });
   }
 
   playEnemyDeath(): void {
-    // Crunch noise + descending tone
-    this.playNoise(0.06, 0.18, 600, 'bandpass');
-    this.playToneSlide(300, 60, 0.25, 'sawtooth', 0.15);
+    this.playEvent('enemy-death', (dest, vol) => {
+      this.playNoise(0.06, 0.18, 600, 'bandpass', 0, dest, vol);
+      this.playToneSlide(300, 60, 0.25, 'sawtooth', 0.15 * vol, 0, dest);
+    });
   }
 
   playBossEnemyDeath(): void {
-    // Big boom — low noise burst
-    this.playNoise(0.12, 0.5, 120, 'lowpass');
-    this.playToneSlide(120, 30, 0.5, 'sawtooth', 0.3);
+    this.playEvent('boss-death', (dest, vol) => {
+      this.playNoise(0.12, 0.5, 120, 'lowpass', 0, dest, vol);
+      this.playToneSlide(120, 30, 0.5, 'sawtooth', 0.3 * vol, 0, dest);
+    });
   }
 
   playWaveStart(): void {
-    // Ascending fanfare: three notes
-    const notes = [261, 329, 523];
-    notes.forEach((freq, i) => {
-      this.playTone(freq, 0.12, 'sine', 0.25, i * 0.12);
+    this.playEvent('wave-start', (dest, vol) => {
+      const notes = [261, 329, 523];
+      notes.forEach((freq, i) => {
+        this.playTone(freq, 0.12, 'sine', 0.25 * vol, i * 0.12, 0, dest);
+      });
     });
   }
 
   playWaveClear(): void {
-    // Victory arpeggio
-    const notes = [523, 659, 784, 1046];
-    notes.forEach((freq, i) => {
-      this.playTone(freq, 0.18, 'sine', 0.2, i * 0.15);
+    this.playEvent('wave-clear', (dest, vol) => {
+      const notes = [523, 659, 784, 1046];
+      notes.forEach((freq, i) => {
+        this.playTone(freq, 0.18, 'sine', 0.2 * vol, i * 0.15, 0, dest);
+      });
     });
   }
 
   playBaseDamage(): void {
-    // Heavy low buzz + alarm
-    this.playNoise(0.1, 0.35, 80, 'lowpass');
-    this.playTone(220, 0.2, 'square', 0.18, 0, 200);
+    this.playEvent('base-damage', (dest, vol) => {
+      this.playNoise(0.1, 0.35, 80, 'lowpass', 0, dest, vol);
+      this.playTone(220, 0.2, 'square', 0.18 * vol, 0, 200, dest);
+    });
   }
 
   playReaction(reactionId: string): void {
-    const reactionSounds: Record<string, () => void> = {
-      'fire+water': () => { this.playSteam(); },
-      'fire+ice':   () => { this.playFreezeShatter(); },
-      'ice+water':  () => { this.playIceWater(); },
-      'fire+poison':() => { this.playExplosionPoison(); },
-    };
-    const sfx = reactionSounds[reactionId];
-    if (sfx) sfx();
-    else this.playTone(660, 0.08, 'triangle', 0.12);
+    this.playEvent('reaction', (dest, vol) => {
+      const reactionSounds: Record<string, () => void> = {
+        'fire+water': () => { this.playSteam(dest, vol); },
+        'fire+ice':   () => { this.playFreezeShatter(dest, vol); },
+        'ice+water':  () => { this.playIceWater(dest, vol); },
+        'fire+poison':() => { this.playExplosionPoison(dest, vol); },
+      };
+      const sfx = reactionSounds[reactionId];
+      if (sfx) sfx();
+      else this.playTone(660, 0.08, 'triangle', 0.12 * vol, 0, 0, dest);
+    });
   }
 
   playReactionDefault(): void {
-    this.playTone(660, 0.08, 'triangle', 0.12);
+    this.playEvent('reaction', (dest, vol) => {
+      this.playTone(660, 0.08, 'triangle', 0.12 * vol, 0, 0, dest);
+    });
   }
 
   playMusic(): void {
@@ -108,26 +131,62 @@ export class AudioManager {
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // Reaction SFX
+  // Pool event helper
   // ─────────────────────────────────────────────────────────────────
 
-  private playSteam(): void {
-    this.playNoise(0.04, 0.25, 1800, 'highpass');
-    this.playTone(800, 0.12, 'sine', 0.08, 0.05, -200);
+  /**
+   * Creates a per-event GainNode, registers it with the SoundPool,
+   * and calls `fn` with the destination node and the normalised volume factor.
+   * The pool may stop the oldest instance if this category is full.
+   */
+  private playEvent(
+    category: string,
+    fn: (dest: GainNode, volumeFactor: number) => void
+  ): void {
+    if (!this.ensureCtx() || this.muted) return;
+    const ctx = this.ctx!;
+
+    // Per-event intermediate gain node so we can silence it on eviction
+    const eventGain = ctx.createGain();
+    eventGain.gain.setValueAtTime(1, ctx.currentTime);
+    eventGain.connect(this.masterGain!);
+
+    const tick = ++this._tick;
+    const instance: PooledInstance = {
+      startTime: tick,
+      stop: () => {
+        // Ramp down in 5 ms to avoid click artifacts
+        eventGain.gain.cancelScheduledValues(ctx.currentTime);
+        eventGain.gain.setValueAtTime(eventGain.gain.value, ctx.currentTime);
+        eventGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.005);
+      },
+    };
+
+    const volumeFactor = this.pool.acquire(category, instance);
+    fn(eventGain, volumeFactor);
   }
 
-  private playFreezeShatter(): void {
-    this.playNoise(0.03, 0.12, 3000, 'highpass');
-    this.playTone(1200, 0.06, 'sine', 0.1);
+  // ─────────────────────────────────────────────────────────────────
+  // Reaction SFX (now take dest + vol params)
+  // ─────────────────────────────────────────────────────────────────
+
+  private playSteam(dest: GainNode, vol: number): void {
+    this.playNoise(0.04, 0.25, 1800, 'highpass', 0, dest, vol);
+    this.playTone(800, 0.12, 'sine', 0.08 * vol, 0.05, -200, dest);
   }
 
-  private playIceWater(): void {
-    this.playNoise(0.03, 0.15, 2000, 'bandpass');
+  private playFreezeShatter(dest: GainNode, vol: number): void {
+    this.playNoise(0.03, 0.12, 3000, 'highpass', 0, dest, vol);
+    this.playTone(1200, 0.06, 'sine', 0.1 * vol, 0, 0, dest);
   }
 
-  private playExplosionPoison(): void {
-    this.playNoise(0.08, 0.3, 200, 'bandpass');
-    this.playToneSlide(400, 50, 0.3, 'square', 0.12);
+  private playIceWater(dest: GainNode, vol: number): void {
+    this.playNoise(0.03, 0.15, 2000, 'bandpass', 0, dest, vol);
+  }
+
+  private playExplosionPoison(dest: GainNode, vol: number): void {
+    this.playNoise(0.08, 0.3, 200, 'bandpass', 0, dest, vol);
+    this.playToneSlide(400, 50, 0.3, 'square', 0.12 * vol, 0, dest);
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -166,7 +225,7 @@ export class AudioManager {
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // Primitives
+  // Primitives (dest parameter added — connect to caller-supplied node)
   // ─────────────────────────────────────────────────────────────────
 
   private ensureCtx(): boolean {
@@ -188,11 +247,13 @@ export class AudioManager {
     type: OscillatorType,
     gain: number,
     delay = 0,
-    freqSlide = 0
+    freqSlide = 0,
+    dest?: GainNode
   ): void {
     if (!this.ensureCtx() || this.muted) return;
     const ctx = this.ctx!;
     const now = ctx.currentTime + delay;
+    const output = dest ?? this.masterGain!;
 
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -202,7 +263,7 @@ export class AudioManager {
     gainNode.gain.setValueAtTime(gain, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
     osc.connect(gainNode);
-    gainNode.connect(this.masterGain!);
+    gainNode.connect(output);
     osc.start(now);
     osc.stop(now + duration + 0.01);
   }
@@ -213,11 +274,13 @@ export class AudioManager {
     duration: number,
     type: OscillatorType,
     gain: number,
-    delay = 0
+    delay = 0,
+    dest?: GainNode
   ): void {
     if (!this.ensureCtx() || this.muted) return;
     const ctx = this.ctx!;
     const now = ctx.currentTime + delay;
+    const output = dest ?? this.masterGain!;
 
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
@@ -227,7 +290,7 @@ export class AudioManager {
     gainNode.gain.setValueAtTime(gain, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
     osc.connect(gainNode);
-    gainNode.connect(this.masterGain!);
+    gainNode.connect(output);
     osc.start(now);
     osc.stop(now + duration + 0.01);
   }
@@ -237,11 +300,14 @@ export class AudioManager {
     decay: number,
     filterFreq: number,
     filterType: BiquadFilterType,
-    delay = 0
+    delay = 0,
+    dest?: GainNode,
+    volFactor = 1
   ): void {
     if (!this.ensureCtx() || this.muted) return;
     const ctx = this.ctx!;
     const now = ctx.currentTime + delay;
+    const output = dest ?? this.masterGain!;
 
     const bufferSize = Math.ceil(ctx.sampleRate * (duration + decay));
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -256,12 +322,12 @@ export class AudioManager {
     filter.frequency.setValueAtTime(filterFreq, now);
 
     const gainNode = ctx.createGain();
-    gainNode.gain.setValueAtTime(0.25, now);
+    gainNode.gain.setValueAtTime(0.25 * volFactor, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration + decay);
 
     source.connect(filter);
     filter.connect(gainNode);
-    gainNode.connect(this.masterGain!);
+    gainNode.connect(output);
     source.start(now);
     source.stop(now + duration + decay + 0.01);
   }
