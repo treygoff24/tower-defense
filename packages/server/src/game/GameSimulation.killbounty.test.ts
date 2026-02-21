@@ -40,7 +40,7 @@ function spawnStationary(sim: GameSimulation, hp: number, x: number, y: number) 
  *   won't end while we're testing kill bounty (prevents wave bonus contamination).
  */
 function startCombat(sim: GameSimulation, towerId: string) {
-  sim.placeTower('p1', towerId, 2, 6);
+  sim.placeTower('p1', towerId, 3, 5);
   sim.startWave();
   (sim as any).spawnQueue = [];
   // Blocker at (2, 0) — outside tower range (distance 6 > range 3) and near

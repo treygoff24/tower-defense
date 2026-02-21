@@ -16,7 +16,7 @@ describe('GameSimulation — Combat Tick Integration', () => {
   it('enemies take damage from towers during combat', () => {
     // Zone A covers x:[1,2] y:[5,6,7]. Tower at (2,6) is in Zone A.
     // Enemies travel from (-1,7) → (2,7). Distance from (2,6) to (2,7) = 1 → in range 3.
-    sim.placeTower('p1', 'arrow_tower', 2, 6);
+    sim.placeTower('p1', 'arrow_tower', 3, 5);
     sim.startWave();
     // Tick 10 seconds — enough for enemies to enter range and take hits
     for (let i = 0; i < 200; i++) sim.tick(0.05);

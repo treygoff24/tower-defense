@@ -45,7 +45,7 @@ describe('GameSimulation — tower_fired events', () => {
   it('emits at least one tower_fired event when a tower attacks during combat', () => {
     // Zone A covers (x:[1,2], y:[5,6,7]). arrow_tower at (2,6) is inside Zone A.
     // Enemies walk through row y=7, distance 1 from tower → well within range 3.
-    sim.placeTower('p1', 'arrow_tower', 2, 6);
+    sim.placeTower('p1', 'arrow_tower', 3, 5);
     sim.startWave();
 
     const events = collectFiredEvents(sim);
@@ -54,7 +54,7 @@ describe('GameSimulation — tower_fired events', () => {
   });
 
   it('tower_fired event contains required fields with correct types', () => {
-    sim.placeTower('p1', 'arrow_tower', 2, 6);
+    sim.placeTower('p1', 'arrow_tower', 3, 5);
     sim.startWave();
 
     const events = collectFiredEvents(sim);
@@ -93,7 +93,7 @@ describe('GameSimulation — tower_fired events', () => {
   });
 
   it('tower_fired event for arrow_tower (shared class) has element undefined', () => {
-    sim.placeTower('p1', 'arrow_tower', 2, 6);
+    sim.placeTower('p1', 'arrow_tower', 3, 5);
     sim.startWave();
 
     const events = collectFiredEvents(sim);
@@ -105,7 +105,7 @@ describe('GameSimulation — tower_fired events', () => {
   });
 
   it('drainEvents clears the pending queue on each call', () => {
-    sim.placeTower('p1', 'arrow_tower', 2, 6);
+    sim.placeTower('p1', 'arrow_tower', 3, 5);
     sim.startWave();
 
     // Tick until at least one event is generated

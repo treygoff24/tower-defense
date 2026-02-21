@@ -50,16 +50,18 @@ export const MAP_CONFIGS: Record<string, MapConfig> = {
       { x:  7, y: 16 },   //  3 – bottom-left corner; turn N
       { x:  7, y:  4 },   //  4 – left S-curve apex; turn E  (S-curve 1)
       { x: 14, y:  4 },   //  5 – top of Seg-V; turn S
-      { x: 14, y: 20 },   //  6 – bottom of Seg-V; turn E   (Seg-V: CROSSROADS ARM 1)
-      { x: 20, y: 20 },   //  7 – bottom-center; turn N
-      { x: 20, y:  9 },   //  8 – middle-right rise; turn W (S-curve 2)
-      { x:  8, y:  9 },   //  9 – Seg-H end; turn S          (Seg-H: CROSSROADS ARM 2)
-      { x:  8, y: 22 },   // 10 – back-left bottom; turn E
-      { x: 26, y: 22 },   // 11 – bottom sweep end; turn N
-      { x: 26, y:  7 },   // 12 – right-side apex; turn E    (S-curve 3)
-      { x: 31, y:  7 },   // 13 – top-right; turn S
-      { x: 31, y: 22 },   // 14 – bottom-right; turn E
-      { x: 33, y: 22 },   // 15 – off-screen exit (right edge)
+      { x: 14, y:  9 },   //  6 – ★ CROSSROADS tile (1st pass, going S on Seg-V)
+      { x: 14, y: 20 },   //  7 – bottom of Seg-V; turn E
+      { x: 20, y: 20 },   //  8 – bottom-center; turn N
+      { x: 20, y:  9 },   //  9 – middle-right; turn W (S-curve 2 apex)
+      { x: 14, y:  9 },   // 10 – ★ CROSSROADS tile (2nd pass, going W on Seg-H)
+      { x:  8, y:  9 },   // 11 – Seg-H end; turn S
+      { x:  8, y: 22 },   // 12 – back-left bottom; turn E
+      { x: 26, y: 22 },   // 13 – bottom sweep end; turn N
+      { x: 26, y:  7 },   // 14 – right-side apex; turn E    (S-curve 3)
+      { x: 31, y:  7 },   // 15 – top-right; turn S
+      { x: 31, y: 22 },   // 16 – bottom-right; turn E
+      { x: 33, y: 22 },   // 17 – off-screen exit (right edge)
     ],
 
     // ── Build Zones ────────────────────────────────────────────────────────

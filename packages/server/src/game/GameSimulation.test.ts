@@ -47,7 +47,7 @@ describe('GameSimulation — sellTower phase guard', () => {
     sim.startGame();
     expect(sim.state.phase).toBe('prep');
     // Place a tower first so we have something to sell
-    const place = sim.placeTower('p1', 'arrow_tower', 1, 5);
+    const place = sim.placeTower('p1', 'arrow_tower', 1, 2);
     expect(place.ok).toBe(true);
     const instanceId = Object.keys(sim.state.towers)[0];
     const result = sim.sellTower('p1', instanceId);
@@ -58,7 +58,7 @@ describe('GameSimulation — sellTower phase guard', () => {
     sim.readyUp('p1');
     sim.startGame();
     // Place a tower in prep
-    const place = sim.placeTower('p1', 'arrow_tower', 1, 5);
+    const place = sim.placeTower('p1', 'arrow_tower', 1, 2);
     expect(place.ok).toBe(true);
     const instanceId = Object.keys(sim.state.towers)[0];
     // Advance to combat
@@ -114,7 +114,7 @@ describe('GameSimulation — Phase Management', () => {
     sim.readyUp('p1');
     sim.startGame();
     // Zone A covers x:[1,2] y:[5,6,7] — (1,5) is valid
-    const result = sim.placeTower('p1', 'arrow_tower', 1, 5);
+    const result = sim.placeTower('p1', 'arrow_tower', 1, 2);
     expect(result.ok).toBe(true);
   });
 
@@ -124,7 +124,7 @@ describe('GameSimulation — Phase Management', () => {
     // Force-spend all gold
     (sim as any).economy.state.gold = 0;
     // Placement rejected due to insufficient gold before zone check
-    const result = sim.placeTower('p1', 'arrow_tower', 1, 5);
+    const result = sim.placeTower('p1', 'arrow_tower', 1, 2);
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/gold/i);
   });

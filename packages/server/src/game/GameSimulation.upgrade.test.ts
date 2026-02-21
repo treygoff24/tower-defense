@@ -15,7 +15,7 @@ function setupWithTower(): { sim: GameSimulation; instanceId: string } {
   sim.startGame(); // → prep phase, starting gold granted
 
   // arrow_tower costs 50g; starting gold is 200 (1 player) — plenty
-  const placeResult = sim.placeTower('p1', 'arrow_tower', 1, 5);
+  const placeResult = sim.placeTower('p1', 'arrow_tower', 1, 2);
   expect(placeResult.ok).toBe(true);
 
   const instanceId = Object.keys(sim.state.towers)[0]!;

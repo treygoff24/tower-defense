@@ -335,6 +335,37 @@ export class HudScene extends Phaser.Scene {
 
   syncState(state: GameState): void {
     if (!this.goldText) return;
+
+    // ── Stats tracking ────────────────────────────────────────────
+    // Enemies killed: alive last tick but now gone/dead
+    const aliveNow = new Set(
+      Object.entries(state.enemies)
+        .filter(([, e]) => e.alive)
+        .map(([id]) => id)
+    );
+    for (const prevId of this.statsPrevAliveEnemies) {
+      if (!aliveNow.has(prevId)) this.statsEnemiesKilled++;
+    }
+    this.statsPrevAliveEnemies = aliveNow;
+
+    // Gold earned: track positive deltas
+    if (state.economy.gold > this.statsPrevGold) {
+      this.statsGoldEarned += state.economy.gold - this.statsPrevGold;
+    }
+    this.statsPrevGold = state.economy.gold;
+
+    // Towers built: new tower IDs appearing in state
+    const towerIds = new Set(Object.keys(state.towers));
+    for (const id of towerIds) {
+      if (!this.statsPrevTowers.has(id)) this.statsTowersBuilt++;
+    }
+    this.statsPrevTowers = towerIds;
+
+    // ── Wave banner (show on combat phase with new wave) ──────────
+    if (state.phase === 'combat' && state.wave > this.lastBannerWave) {
+      this.showWaveBanner(state.wave);
+    }
+
     // Gold — pulse on change
     const newGold = state.economy.gold;
     this.hudGold = newGold;
@@ -539,6 +570,158 @@ export class HudScene extends Phaser.Scene {
       // Flash start-wave button green when a tower is placed
       this.flashStartWaveButton();
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Wave Announcement Banner V2
+  // ─────────────────────────────────────────────────────────────────
+
+  private showWaveBanner(wave: number): void {
+    if (this.lastBannerWave >= wave) return;
+    this.lastBannerWave = wave;
+
+    const W = this.cameras.main.width;
+
+    // Destroy any existing banner
+    if (this.waveBannerContainer) {
+      this.waveBannerContainer.destroy();
+      this.waveBannerContainer = null;
+    }
+
+    // Look up wave config
+    const waveConfig: WaveConfig | undefined = WAVE_CONFIGS.find((wc) => wc.wave === wave);
+    const goldBonus = wave * 10 + 20;
+
+    // Build enemy summary string with icons
+    const ENEMY_ICONS: Record<string, string> = {
+      grunt: '👣', runner: '💨', tank: '🛡', flyer: '🦋',
+      invisible: '👻', caster: '🧙', boss: '💀',
+    };
+    const enemySummary = waveConfig?.groups
+      .map((g) => `${ENEMY_ICONS[g.enemyType] ?? '👾'} ${g.enemyType} ×${g.count}`)
+      .join('  ') ?? '';
+
+    const telegraph = waveConfig?.telegraph ?? '';
+
+    const bannerW = Math.min(W - 40, 700);
+    const bannerH = telegraph ? 96 : 72;
+
+    const container = this.add.container(W / 2, -bannerH - 10);
+    container.setScrollFactor(0);
+    container.setDepth(95); // below interactive UI (101+), does not block clicks
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x06061a, 0.88);
+    bg.fillRoundedRect(-bannerW / 2, 0, bannerW, bannerH, 12);
+    bg.lineStyle(2, 0xffcc00, 0.9);
+    bg.strokeRoundedRect(-bannerW / 2, 0, bannerW, bannerH, 12);
+    // Gold accent strip at top
+    bg.fillStyle(0xffcc00, 0.7);
+    bg.fillRoundedRect(-bannerW / 2, 0, bannerW, 4, { tl: 12, tr: 12, bl: 0, br: 0 });
+    container.add(bg);
+
+    // Wave title
+    const titleText = this.add.text(0, 14, `⚔  WAVE ${wave}`, {
+      fontSize: '26px',
+      fontFamily: '"Arial Black", Arial',
+      fontStyle: 'bold',
+      color: '#ffcc00',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5, 0);
+    container.add(titleText);
+
+    // Enemy summary row
+    if (enemySummary) {
+      const enemyText = this.add.text(0, 46, enemySummary, {
+        fontSize: '14px',
+        fontFamily: 'Arial',
+        color: '#ffccaa',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }).setOrigin(0.5, 0);
+      container.add(enemyText);
+    }
+
+    // Telegraph (left) + Gold bonus (right)
+    if (telegraph) {
+      const telegraphText = this.add.text(-bannerW / 2 + 14, bannerH - 22, `"${telegraph}"`, {
+        fontSize: '11px',
+        fontFamily: 'Arial',
+        fontStyle: 'italic',
+        color: '#aaccff',
+      }).setOrigin(0, 0);
+      container.add(telegraphText);
+    }
+
+    const goldBonusPreview = this.add.text(bannerW / 2 - 14, bannerH - 22, `+${goldBonus}g 💰 wave bonus`, {
+      fontSize: '11px',
+      fontFamily: 'Arial',
+      color: '#ffd700',
+    }).setOrigin(1, 0);
+    container.add(goldBonusPreview);
+
+    this.waveBannerContainer = container;
+
+    // Slide in from top
+    this.tweens.add({
+      targets: container,
+      y: 58, // just below top HUD bar row
+      duration: 400,
+      ease: 'Back.Out',
+      onComplete: () => {
+        // Hold 3 seconds then slide out
+        this.time.delayedCall(3000, () => {
+          if (!container.active) return;
+          this.tweens.add({
+            targets: container,
+            y: -bannerH - 20,
+            duration: 350,
+            ease: 'Back.In',
+            onComplete: () => {
+              container.destroy();
+              if (this.waveBannerContainer === container) {
+                this.waveBannerContainer = null;
+              }
+            },
+          });
+        });
+      },
+    });
+  }
+
+  /** Called by GameClient when a tower fires — used for MVP tracking. */
+  recordTowerShot(towerId: string, configId: string): void {
+    const entry = this.statsTowerShots.get(towerId);
+    if (entry) {
+      entry.shots++;
+    } else {
+      this.statsTowerShots.set(towerId, { configId, shots: 1 });
+    }
+  }
+
+  /** Return current match stats for ResultScene. */
+  getMatchStats(): {
+    enemiesKilled: number;
+    goldEarned: number;
+    towersBuilt: number;
+    mvpTowerName: string | null;
+  } {
+    let mvpTowerName: string | null = null;
+    let maxShots = 0;
+    for (const [, entry] of this.statsTowerShots) {
+      if (entry.shots > maxShots) {
+        maxShots = entry.shots;
+        mvpTowerName = TOWER_CONFIGS[entry.configId]?.name ?? entry.configId;
+      }
+    }
+    return {
+      enemiesKilled: this.statsEnemiesKilled,
+      goldEarned: this.statsGoldEarned,
+      towersBuilt: this.statsTowersBuilt,
+      mvpTowerName,
+    };
   }
 
   private showGameOverOverlay(phase: 'victory' | 'defeat'): void {
