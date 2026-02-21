@@ -614,7 +614,8 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
 
   private handleMouseMove(pointer: Phaser.Input.Pointer): void {
-    if (this.currentPhase !== 'prep' || !this.selectedTowerId) {
+    const canPlace = this.currentPhase === 'prep' || this.currentPhase === 'combat';
+    if (!canPlace || !this.selectedTowerId) {
       this.ghostGraphics.clear();
       this.rangePreview.clear();
       return;
@@ -659,7 +660,8 @@ export class GameScene extends Phaser.Scene {
     const tileX = Math.floor(pointer.worldX / TILE_SIZE);
     const tileY = Math.floor(pointer.worldY / TILE_SIZE);
 
-    if (this.currentPhase === 'prep' && this.selectedTowerId) {
+    const canPlace = this.currentPhase === 'prep' || this.currentPhase === 'combat';
+    if (canPlace && this.selectedTowerId) {
       const gameClient = this.registry.get('gameClient') as GameClient;
       if (gameClient && this.isValidBuildTile(tileX, tileY) && !this.isTileOccupied(tileX, tileY)) {
         this.events.emit('tile-clicked', { tileX, tileY, configId: this.selectedTowerId });

@@ -1,6 +1,6 @@
 // packages/server/src/game/GameSimulation.ts
 import type { GameState, ElementType, TowerConfig, WaveConfig, MapConfig, ReactionConfig } from '@td/shared';
-import { PREP_PHASE_DURATION_SEC, TOWER_CONFIGS, WAVE_CONFIGS, MAP_CONFIGS, REACTION_CONFIGS } from '@td/shared';
+import { PREP_PHASE_DURATION_SEC, TOWER_CONFIGS, WAVE_CONFIGS, MAP_CONFIGS, REACTION_CONFIGS, ENEMY_BASE_DAMAGE } from '@td/shared';
 import { GameRoom } from '../rooms/GameRoom.js';
 import { EconomySystem } from '../systems/EconomySystem.js';
 import { WaveScheduler } from '../systems/WaveScheduler.js';
@@ -92,6 +92,10 @@ export class GameSimulation {
   }
 
   placeTower(playerId: string, configId: string, x: number, y: number): CommandResult {
+    const phase = this.room.state.phase;
+    if (phase !== 'prep' && phase !== 'combat') {
+      return { ok: false, reason: `Tower placement not allowed during ${phase} phase` };
+    }
     const config = TOWER_CONFIGS[configId];
     if (!config) return { ok: false, reason: 'Unknown tower' };
     if (!this.economy.canAfford(config.costGold)) return { ok: false, reason: 'Not enough gold' };
@@ -184,8 +188,9 @@ export class GameSimulation {
     if (leaked.length > 0) {
       console.log(`[DEBUG] ${leaked.length} enemies leaked! baseHp=${this.room.state.baseHp}, wave=${this.room.state.wave}, elapsed=${this.waveElapsedSec.toFixed(1)}s`);
     }
-    for (const _enemy of leaked) {
-      this.room.state.baseHp -= 1;
+    for (const enemy of leaked) {
+      const damage = ENEMY_BASE_DAMAGE[enemy.type] ?? 1;
+      this.room.state.baseHp -= damage;
     }
 
     // Check defeat
