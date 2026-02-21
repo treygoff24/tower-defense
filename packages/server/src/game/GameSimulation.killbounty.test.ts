@@ -8,9 +8,11 @@ import { GameSimulation } from './GameSimulation.js';
  * - Multiple kills award bountyGold each time
  * - Splash kills also award bountyGold
  *
- * Strategy: inject a "blocker" enemy with very high HP (won't die in a few ticks,
- * won't reach end of path) to prevent wave completion from firing the wave bonus,
- * allowing us to isolate kill bounty gold cleanly.
+ * Design notes:
+ * - Enemies are spawned with speed=0 so they don't move out of tower range.
+ * - A "blocker" enemy with very high HP is injected far from the tower to
+ *   prevent wave completion from firing the wave bonus gold, keeping the
+ *   kill bounty assertion clean.
  */
 
 function setupSim(): GameSimulation {
@@ -22,10 +24,10 @@ function setupSim(): GameSimulation {
   return sim;
 }
 
-/** Spawn an enemy at the given position with specified HP. */
-function spawnAt(sim: GameSimulation, hp: number, x: number, y: number) {
+/** Spawn a stationary enemy (speed=0) at the given position. */
+function spawnStationary(sim: GameSimulation, hp: number, x: number, y: number) {
   const enemySys = (sim as any).enemySystem;
-  const e = enemySys.spawnEnemy('grunt', hp, 1.0, 0, ['ground']);
+  const e = enemySys.spawnEnemy('grunt', hp, 0, 0, ['ground']); // speed=0 → stays in place
   e.x = x;
   e.y = y;
   return e;
@@ -33,17 +35,16 @@ function spawnAt(sim: GameSimulation, hp: number, x: number, y: number) {
 
 /**
  * Set up a combat scenario:
- * - place a tower, start wave, clear spawnQueue
- * - inject a "blocker" enemy far from the tower (won't die fast)
- *   so the wave won't complete while we run a few ticks
+ * - Place a tower, start wave, clear spawnQueue.
+ * - Inject a "blocker" enemy far from the tower with huge HP so the wave
+ *   won't end while we're testing kill bounty (prevents wave bonus contamination).
  */
 function startCombat(sim: GameSimulation, towerId: string) {
   sim.placeTower('p1', towerId, 2, 6);
   sim.startWave();
-  // Clear auto-spawn queue
   (sim as any).spawnQueue = [];
-  // Blocker: very high HP, far away — prevents wave completion
-  spawnAt(sim, 999999, 20, 3);
+  // Blocker at (2, 4) — far enough that it won't reach the end, with huge HP
+  spawnStationary(sim, 999999, 2, 4);
 }
 
 describe('GameSimulation — Kill Bounty Gold', () => {
@@ -54,15 +55,13 @@ describe('GameSimulation — Kill Bounty Gold', () => {
   });
 
   it('awards bountyGold when a primary-hit kill occurs', () => {
-    // arrow_tower at (2,6), range=3; path runs through (2,7) which is distance 1
+    // arrow_tower at (2,6), range=3; stationary enemy at (2,7) is distance 1
     startCombat(sim, 'arrow_tower');
 
-    // Inject a single 1-HP enemy within tower range
-    const target = spawnAt(sim, 1, 2, 7);
-
+    const target = spawnStationary(sim, 1, 2, 7);
     const goldBefore = sim.state.economy.gold;
 
-    // Tick until the enemy is killed (tower fires after attackPeriodSec = 1s)
+    // Tick until the enemy is killed (tower fires every 20 ticks at dt=0.1)
     for (let i = 0; i < 50; i++) {
       sim.tick(0.1);
       if (!target.alive) break;
@@ -76,14 +75,15 @@ describe('GameSimulation — Kill Bounty Gold', () => {
   it('awards bountyGold per kill when multiple enemies are killed', () => {
     startCombat(sim, 'arrow_tower');
 
-    // Three 1-HP enemies at the same spot — all within tower range
-    const e1 = spawnAt(sim, 1, 2, 7);
-    const e2 = spawnAt(sim, 1, 2, 7);
-    const e3 = spawnAt(sim, 1, 2, 7);
+    // Three 1-HP stationary enemies within tower range at (2,7)
+    const e1 = spawnStationary(sim, 1, 2, 7);
+    const e2 = spawnStationary(sim, 1, 2, 7);
+    const e3 = spawnStationary(sim, 1, 2, 7);
 
     const goldBefore = sim.state.economy.gold;
 
-    // Tick long enough for all 3 to be killed (tower fires every 1s, 3 seconds needed)
+    // Tower fires every 20 ticks. 3 kills need 3 fire events = 60 ticks
+    // Use 200 ticks to be safe
     for (let i = 0; i < 200; i++) {
       sim.tick(0.1);
       if (!e1.alive && !e2.alive && !e3.alive) break;
@@ -97,23 +97,23 @@ describe('GameSimulation — Kill Bounty Gold', () => {
   });
 
   it('awards bountyGold for splash damage kills', () => {
-    // flame_spire: splashRadius=1.5, baseDamage=22, fire class tower
+    // flame_spire: splashRadius=1.5, baseDamage=22, available to fire class
     startCombat(sim, 'flame_spire');
 
-    // Primary target: 1 HP, within tower range at (2,7)
-    const primary = spawnAt(sim, 1, 2, 7);
-    // Splash target: 1 HP, within splash radius (1.5) of primary
-    const splash = spawnAt(sim, 1, 2.5, 7);
+    // Primary target at (2,7) — within tower range (tower at (2,6), range=3.5)
+    const primary = spawnStationary(sim, 1, 2, 7);
+    // Splash target at (2.5,7) — 0.5 tiles from primary, within splashRadius=1.5
+    const splashVictim = spawnStationary(sim, 1, 2.5, 7);
 
     const goldBefore = sim.state.economy.gold;
 
     for (let i = 0; i < 100; i++) {
       sim.tick(0.1);
-      if (!primary.alive && !splash.alive) break;
+      if (!primary.alive && !splashVictim.alive) break;
     }
 
     expect(primary.alive).toBe(false);
-    expect(splash.alive).toBe(false);
+    expect(splashVictim.alive).toBe(false);
     // Both kills should award bountyGold: 2 × 5 = 10
     expect(sim.state.economy.gold).toBe(goldBefore + 10);
   });
@@ -121,27 +121,26 @@ describe('GameSimulation — Kill Bounty Gold', () => {
   it('does NOT award bountyGold when enemy takes damage but survives', () => {
     startCombat(sim, 'arrow_tower');
 
-    // Tanky enemy with 1000 HP — won't die in a few ticks
-    const enemy = spawnAt(sim, 1000, 2, 7);
+    // Tanky enemy with 1000 HP — will take damage but survive several ticks
+    const tanky = spawnStationary(sim, 1000, 2, 7);
     const goldBefore = sim.state.economy.gold;
 
-    // Only tick a few times so tower fires but enemy survives
-    for (let i = 0; i < 15; i++) sim.tick(0.1);
+    // Tick a handful of times — tower fires once (10 dmg), enemy survives
+    for (let i = 0; i < 25; i++) sim.tick(0.1);
 
-    expect(enemy.alive).toBe(true);
+    expect(tanky.alive).toBe(true);
     // No kill bounty should be awarded
     expect(sim.state.economy.gold).toBe(goldBefore);
   });
 
   it('awards correct bountyGold for wave 2 (6 gold/kill)', () => {
-    // Advance to wave 2 directly by manipulating the scheduler
+    // Advance the scheduler so getCurrentWaveConfig returns wave 2 (bountyGold=6)
     startCombat(sim, 'arrow_tower');
-    // Advance scheduler to wave 2 (currentWave goes from 1 to 2)
     const waveScheduler = (sim as any).waveScheduler;
-    waveScheduler.advance(); // currentWave = 2 → getCurrentWaveConfig returns waves[1] (bountyGold=6)
+    waveScheduler.advance(); // currentWave = 2 → getCurrentWaveConfig returns waves[1]
     (sim as any).room.state.wave = 2;
 
-    const target = spawnAt(sim, 1, 2, 7);
+    const target = spawnStationary(sim, 1, 2, 7);
     const goldBefore = sim.state.economy.gold;
 
     for (let i = 0; i < 50; i++) {

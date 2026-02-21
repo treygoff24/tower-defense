@@ -73,6 +73,22 @@ export class NetworkManager {
     return this.sendCommand({ type: 'place_tower', configId, x, y });
   }
 
+  async sellTower(instanceId: string): Promise<{ ok: boolean; reason?: string; goldRefund?: number }> {
+    return new Promise((resolve) => {
+      if (!this.socket?.connected) {
+        resolve({ ok: false, reason: 'Not connected' });
+        return;
+      }
+      this.socket.emit(
+        'command',
+        { type: 'sell_tower', instanceId },
+        (response: { ok: boolean; reason?: string; goldRefund?: number }) => {
+          resolve(response);
+        }
+      );
+    });
+  }
+
   async startWave(): Promise<{ ok: boolean; reason?: string }> {
     return this.sendCommand({ type: 'start_wave' });
   }

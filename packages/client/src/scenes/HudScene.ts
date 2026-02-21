@@ -40,6 +40,7 @@ export class HudScene extends Phaser.Scene {
   private playerElement: ElementType | null = null;
   private prevBaseHp = -1;
   private towerPanel: TowerPanel | null = null;
+  private sellPanel: Phaser.GameObjects.Container | null = null;
   private hudGold = 0;
 
   /* Tracking for polish features */
@@ -803,5 +804,151 @@ export class HudScene extends Phaser.Scene {
 
   showBaseDamage(damage: number): void {
     this.showDamageIndicator(0, damage);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Sell Panel
+  // ─────────────────────────────────────────────────────────────────
+
+  showSellPanel(
+    instanceId: string,
+    configId: string,
+    refund: number,
+    onSell: () => void
+  ): void {
+    this.hideSellPanel();
+
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
+    const cfg = TOWER_CONFIGS[configId];
+    const towerName = cfg?.name ?? configId;
+
+    const panelW = 200;
+    const panelH = 120;
+    const px = W - panelW / 2 - 20;   // right side (above tower panel area)
+    const py = H - panelH / 2 - 80;
+
+    const container = this.add.container(px, py);
+    container.setScrollFactor(0).setDepth(110);
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0a22, 0.93);
+    bg.fillRoundedRect(-panelW / 2, -panelH / 2, panelW, panelH, 10);
+    bg.lineStyle(2, 0xffd700, 0.9);
+    bg.strokeRoundedRect(-panelW / 2, -panelH / 2, panelW, panelH, 10);
+
+    // Tower name
+    const nameText = this.add.text(0, -panelH / 2 + 16, towerName, {
+      fontSize: '13px',
+      fontFamily: '"Arial Black", Arial',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5);
+
+    // Refund amount
+    const refundText = this.add.text(0, -panelH / 2 + 36, `Sell for 💰 ${refund}g`, {
+      fontSize: '12px',
+      fontFamily: 'Arial',
+      color: '#ffd700',
+    }).setOrigin(0.5);
+
+    // Sell button
+    const btnW = 80;
+    const btnH = 30;
+    const sellBtnGfx = this.add.graphics();
+    const drawSellBtn = (hover: boolean) => {
+      sellBtnGfx.clear();
+      sellBtnGfx.fillStyle(hover ? 0xee4400 : 0xcc2200, 1);
+      sellBtnGfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 6);
+      sellBtnGfx.lineStyle(1, 0xff6644, 0.8);
+      sellBtnGfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 6);
+    };
+    drawSellBtn(false);
+    sellBtnGfx.setPosition(-44, panelH / 2 - 22);
+
+    const sellBtnText = this.add.text(-44, panelH / 2 - 22, '💰 SELL', {
+      fontSize: '12px',
+      fontFamily: '"Arial Black", Arial',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    const sellHit = this.add.rectangle(-44, panelH / 2 - 22, btnW, btnH, 0, 0)
+      .setInteractive({ useHandCursor: true });
+    sellHit.on('pointerover', () => drawSellBtn(true));
+    sellHit.on('pointerout', () => drawSellBtn(false));
+    sellHit.on('pointerdown', () => {
+      onSell();
+      this.hideSellPanel();
+    });
+
+    // Close button
+    const closeBtnGfx = this.add.graphics();
+    const drawCloseBtn = (hover: boolean) => {
+      closeBtnGfx.clear();
+      closeBtnGfx.fillStyle(hover ? 0x555577 : 0x333355, 1);
+      closeBtnGfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 6);
+      closeBtnGfx.lineStyle(1, 0x6666aa, 0.8);
+      closeBtnGfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 6);
+    };
+    drawCloseBtn(false);
+    closeBtnGfx.setPosition(44, panelH / 2 - 22);
+
+    const closeBtnText = this.add.text(44, panelH / 2 - 22, '✕ Cancel', {
+      fontSize: '12px',
+      fontFamily: 'Arial',
+      color: '#aaaaaa',
+    }).setOrigin(0.5);
+
+    const closeHit = this.add.rectangle(44, panelH / 2 - 22, btnW, btnH, 0, 0)
+      .setInteractive({ useHandCursor: true });
+    closeHit.on('pointerover', () => drawCloseBtn(true));
+    closeHit.on('pointerout', () => drawCloseBtn(false));
+    closeHit.on('pointerdown', () => this.hideSellPanel());
+
+    container.add([
+      bg,
+      nameText,
+      refundText,
+      sellBtnGfx,
+      sellBtnText,
+      sellHit,
+      closeBtnGfx,
+      closeBtnText,
+      closeHit,
+    ]);
+
+    // Pop-in animation
+    container.setScale(0.8);
+    container.setAlpha(0);
+    this.tweens.add({
+      targets: container,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 150,
+      ease: 'Back.Out',
+    });
+
+    // Store instanceId for reference
+    (container as unknown as { instanceId: string }).instanceId = instanceId;
+    this.sellPanel = container;
+  }
+
+  hideSellPanel(): void {
+    if (!this.sellPanel) return;
+    const panel = this.sellPanel;
+    this.sellPanel = null;
+    this.tweens.add({
+      targets: panel,
+      alpha: 0,
+      scaleX: 0.8,
+      scaleY: 0.8,
+      duration: 120,
+      ease: 'Power2.In',
+      onComplete: () => panel.destroy(),
+    });
   }
 }

@@ -41,6 +41,30 @@ export class GameClient {
         }
       }
     });
+
+    // Sell flow: placed tower clicked → show sell panel
+    gameScene.events.on(
+      'placed-tower-clicked',
+      (data: { instanceId: string; configId: string; refund: number }) => {
+        hudScene.showSellPanel(data.instanceId, data.configId, data.refund, async () => {
+          const result = await this.network.sellTower(data.instanceId);
+          if (result.ok) {
+            hudScene.hideSellPanel();
+            gameScene.events.emit('tower-sold-visual', {
+              instanceId: data.instanceId,
+              goldRefund: result.goldRefund ?? data.refund,
+            });
+          } else {
+            console.warn('Sell rejected:', result.reason);
+          }
+        });
+      }
+    );
+
+    // Close sell panel when clicking elsewhere
+    gameScene.events.on('sell-panel-close', () => {
+      hudScene.hideSellPanel();
+    });
   }
 
   async selectClass(elementClass: ElementType): Promise<void> {
@@ -61,6 +85,10 @@ export class GameClient {
 
   clearTowerSelection(): void {
     this.selectedTowerId = null;
+  }
+
+  async sellTower(instanceId: string): Promise<{ ok: boolean; reason?: string; goldRefund?: number }> {
+    return this.network.sellTower(instanceId);
   }
 
   getLatestState(): GameState | null {

@@ -159,6 +159,15 @@ export class GameSimulation {
       // Apply primary damage
       this.enemySystem.damageEnemy(attack.targetId, attack.damage);
 
+      // Award kill bounty if enemy died
+      const primaryEnemy = this.enemySystem.getEnemy(attack.targetId);
+      if (primaryEnemy && !primaryEnemy.alive) {
+        const waveConfig = this.waveScheduler.getCurrentWaveConfig();
+        if (waveConfig) {
+          this.economy.addGold(waveConfig.bountyGold);
+        }
+      }
+
       // Apply on-hit elemental statuses and check reactions
       for (const effect of attack.onHitEffects) {
         if (effect.element) {
@@ -180,6 +189,15 @@ export class GameSimulation {
       // Apply splash damage
       for (const splashId of attack.splashTargetIds) {
         this.enemySystem.damageEnemy(splashId, Math.floor(attack.damage * 0.5));
+
+        // Award kill bounty if splash killed this enemy
+        const splashEnemy = this.enemySystem.getEnemy(splashId);
+        if (splashEnemy && !splashEnemy.alive) {
+          const waveConfig = this.waveScheduler.getCurrentWaveConfig();
+          if (waveConfig) {
+            this.economy.addGold(waveConfig.bountyGold);
+          }
+        }
       }
     }
 

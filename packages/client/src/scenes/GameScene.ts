@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone } from '@td/shared';
-import { TILE_SIZE, MAP_CONFIGS } from '@td/shared';
+import { TILE_SIZE, MAP_CONFIGS, TOWER_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { ENEMY_ASSETS, TOWER_ASSETS } from '../assets/manifest';
 import type { TowerAssetInfo } from '../assets/manifest';
@@ -13,6 +13,7 @@ interface TowerVisual {
   rangeCircle: Phaser.GameObjects.Graphics;
   aura: Phaser.GameObjects.Ellipse;
   selected: boolean;
+  configId: string;
 }
 
 // ─── Per-enemy runtime state ─────────────────────────────────────────────────
@@ -104,6 +105,7 @@ export class GameScene extends Phaser.Scene {
     this.events.on('shot-fired', this.handleShotFired, this);
     this.events.on('enemy-killed', this.handleEnemyKilled, this);
     this.events.on('base-damaged', this.handleBaseDamaged, this);
+    this.events.on('tower-sold-visual', this.handleTowerSoldVisual, this);
 
     this.setupDemoMap();
     this.spawnFloatingClouds();
@@ -666,9 +668,40 @@ export class GameScene extends Phaser.Scene {
       if (gameClient && this.isValidBuildTile(tileX, tileY) && !this.isTileOccupied(tileX, tileY)) {
         this.events.emit('tile-clicked', { tileX, tileY, configId: this.selectedTowerId });
       }
+    } else if (this.currentPhase === 'prep') {
+      // Check if clicking on a placed tower → show sell panel
+      const towerAtTile = this.getTowerAtTile(tileX, tileY);
+      if (towerAtTile) {
+        const { instanceId, tv } = towerAtTile;
+        const cfg = TOWER_CONFIGS[tv.configId];
+        const refund = cfg ? Math.round(cfg.costGold * 0.5) : 0;
+        this.events.emit('placed-tower-clicked', {
+          instanceId,
+          configId: tv.configId,
+          refund,
+        });
+      } else {
+        this.events.emit('sell-panel-close');
+        this.events.emit('tile-clicked', { tileX, tileY });
+      }
     } else {
+      this.events.emit('sell-panel-close');
       this.events.emit('tile-clicked', { tileX, tileY });
     }
+  }
+
+  private getTowerAtTile(
+    tileX: number,
+    tileY: number
+  ): { instanceId: string; tv: TowerVisual } | null {
+    for (const [id, tv] of this.towers) {
+      const ttx = Math.floor(tv.base.x / TILE_SIZE);
+      const tty = Math.floor(tv.base.y / TILE_SIZE);
+      if (ttx === tileX && tty === tileY) {
+        return { instanceId: id, tv };
+      }
+    }
+    return null;
   }
 
   private handleTowerSelected(configId: string): void {
@@ -855,7 +888,7 @@ export class GameScene extends Phaser.Scene {
     rangeCircle.setDepth(ENTITY_DEPTH - 1);
     rangeCircle.setVisible(false);
 
-    return { base, soldier, rangeCircle, aura, selected: false };
+    return { base, soldier, rangeCircle, aura, selected: false, configId: tower.configId };
   }
 
   private destroyTowerVisual(tv: TowerVisual): void {
@@ -1361,6 +1394,29 @@ export class GameScene extends Phaser.Scene {
 
   handleBaseDamaged(_data: { damage: number }): void {
     // Camera shake and red flash are already handled in update() via state diff
+  }
+
+  handleTowerSoldVisual(data: { instanceId: string; goldRefund: number }): void {
+    const tv = this.towers.get(data.instanceId);
+    if (tv) {
+      // Floating gold refund text at tower position
+      this.spawnFloatingText(tv.base.x, tv.base.y - 20, `+${data.goldRefund}g 💰`, 0xffd700, 16);
+      // Dissolve animation
+      this.tweens.add({
+        targets: [tv.base, tv.soldier, tv.aura],
+        alpha: 0,
+        scaleX: 0,
+        scaleY: 0,
+        duration: 300,
+        ease: 'Power2.In',
+        onComplete: () => {
+          this.destroyTowerVisual(tv);
+          this.towers.delete(data.instanceId);
+        },
+      });
+    }
+    // Play sell sound
+    this.audio.playSellTower();
   }
 
   // ─────────────────────────────────────────────────────────────────

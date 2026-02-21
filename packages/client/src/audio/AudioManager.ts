@@ -101,6 +101,18 @@ export class AudioManager {
     });
   }
 
+  playSellTower(): void {
+    // Cha-ching: ascending coin tones + metallic tinkle
+    this.playEvent('sell-tower', (dest, vol) => {
+      const notes = [523, 659, 784, 1046];
+      notes.forEach((freq, i) => {
+        this.playTone(freq, 0.1, 'sine', 0.2 * vol, i * 0.06, 0, dest);
+      });
+      // High-frequency metallic noise (coin clink)
+      this.playNoise(0.03, 0.08, 4000, 'highpass', 0.15, dest, vol);
+    });
+  }
+
   playReaction(reactionId: string): void {
     this.playEvent('reaction', (dest, vol) => {
       const reactionSounds: Record<string, () => void> = {
