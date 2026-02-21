@@ -1,6 +1,6 @@
 // packages/server/src/integration/multiplayer.test.ts
 // Socket.IO integration tests — real server + real client connections
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach } from 'vitest';
 import express from 'express';
 import { createServer, Server as HttpServer } from 'http';
 import { Server as IOServer } from 'socket.io';
