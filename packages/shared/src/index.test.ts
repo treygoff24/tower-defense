@@ -40,8 +40,8 @@ describe('Constants', () => {
     expect(BASE_MAX_HP).toBe(100);
   });
 
-  it('TOWER_SELL_REFUND_PERCENT is 0.7', () => {
-    expect(TOWER_SELL_REFUND_PERCENT).toBe(0.7);
+  it('TOWER_SELL_REFUND_PERCENT is 0.5', () => {
+    expect(TOWER_SELL_REFUND_PERCENT).toBe(0.5);
   });
 
   it('MAX_PLAYERS is 4', () => {

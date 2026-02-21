@@ -258,7 +258,7 @@ export const TICK_DURATION_MS = 1000 / TICK_RATE;
 export const SNAPSHOT_INTERVAL_MS = 250;
 export const PREP_PHASE_DURATION_SEC = 30;
 export const BASE_MAX_HP = 100;
-export const TOWER_SELL_REFUND_PERCENT = 0.7;
+export const TOWER_SELL_REFUND_PERCENT = 0.5;
 export const MAX_PLAYERS = 4;
 export const TILE_SIZE = 64;
 

@@ -402,12 +402,12 @@ describe('Multiplayer Socket.IO Integration', () => {
     const towerId = Object.keys(state.towers)[0];
     expect(towerId).toBeDefined();
 
-    // Sell it (70% refund = 35 gold)
+    // Sell it (50% refund = 25 gold)
     const sellResult = await sendCommand(client, { type: 'sell_tower', instanceId: towerId });
     expect(sellResult.ok).toBe(true);
 
     state = await waitForSnapshot(client);
-    expect(state.economy.gold).toBe(goldBefore - 50 + 35);
+    expect(state.economy.gold).toBe(goldBefore - 50 + 25);
     expect(Object.keys(state.towers).length).toBe(0);
   });
 });

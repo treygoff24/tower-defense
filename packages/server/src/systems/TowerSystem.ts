@@ -96,8 +96,8 @@ export class TowerSystem {
     const tower = this.towers.get(instanceId);
     if (!tower) return { ok: false, reason: 'Tower not found' };
 
-    const invested = this.towerInvestment.get(instanceId) ?? 0;
-    const refund = Math.round(invested * TOWER_SELL_REFUND_PERCENT);
+    const baseCost = this.configs[tower.configId].costGold;
+    const refund = Math.round(baseCost * TOWER_SELL_REFUND_PERCENT);
 
     this.towers.delete(instanceId);
     this.occupiedTiles.delete(this.tileKey(tower.x, tower.y));

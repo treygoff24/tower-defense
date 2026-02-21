@@ -45,7 +45,7 @@ describe('EconomySystem', () => {
 
   it('refunds gold on tower sell', () => {
     economy.addGold(0);
-    economy.refundTower(100); // 70% refund
-    expect(economy.state.gold).toBe(70);
+    economy.refundTower(100); // 50% refund
+    expect(economy.state.gold).toBe(50);
   });
 });
