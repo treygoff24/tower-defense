@@ -104,7 +104,7 @@ export interface EnemyState {
 
 export interface EnemyStatus {
   element: ElementType;
-  type: string; // 'soaked' | 'burning' | 'cold' | 'frozen' | 'toxin'
+  type: 'soaked' | 'burning' | 'cold' | 'frozen' | 'toxin';
   stacks: number;
   remainingSec: number;
 }

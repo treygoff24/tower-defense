@@ -149,6 +149,7 @@ export class CombatSystem {
     const config = this.configs[tower.configId];
     if (!config) return false;
     const attackPeriod = this.getEffectiveStat(tower, 'attackPeriodSec');
+    if (attackPeriod <= 0) return false; // support towers never fire
     const ticksBetweenAttacks = Math.floor(attackPeriod * TICK_RATE);
     return currentTick - tower.lastAttackTick >= ticksBetweenAttacks;
   }

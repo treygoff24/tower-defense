@@ -56,7 +56,7 @@ export class WaveScheduler {
       }
     }
 
-    return events;
+    return events.sort((a, b) => a.spawnAtSec - b.spawnAtSec);
   }
 
   get totalWaves(): number {

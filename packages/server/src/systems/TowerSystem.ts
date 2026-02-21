@@ -29,7 +29,6 @@ export class TowerSystem {
   private map: MapConfig;
   private towers: Map<string, TowerState> = new Map();
   private occupiedTiles: Set<string> = new Set();
-  private towerInvestment: Map<string, number> = new Map();
   private nextTowerId = 1; // instance-level to avoid cross-test contamination
 
   constructor(configs: Record<string, TowerConfig>, map: MapConfig) {

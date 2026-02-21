@@ -24,7 +24,7 @@ export class ReactionSystem {
   private reactions: ReactionConfig[];
 
   constructor(reactions: ReactionConfig[]) {
-    this.reactions = reactions.sort(
+    this.reactions = [...reactions].sort(
       (a, b) => (REACTION_PRIORITY[b.id] ?? 0) - (REACTION_PRIORITY[a.id] ?? 0),
     );
   }
