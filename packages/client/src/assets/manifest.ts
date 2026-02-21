@@ -28,7 +28,10 @@ export type AssetEntry =
 
 export const ASSET_MANIFEST: AssetEntry[] = [
   // ── Enemy Robots ────────────────────────────────────────────────────
-  { kind: 'spritesheet', key: 'enemy_grunt',     path: 'assets/Robots/Scarab.png',     frameWidth: 16, frameHeight: 16 },
+  { kind: 'spritesheet', key: 'enemy_grunt',   path: 'assets/Robots/Scarab.png', frameWidth: 16, frameHeight: 16 },
+  // Grunt color variants (same sprite, different runtime tint)
+  { kind: 'spritesheet', key: 'enemy_grunt_1', path: 'assets/Robots/Scarab.png', frameWidth: 16, frameHeight: 16 },
+  { kind: 'spritesheet', key: 'enemy_grunt_2', path: 'assets/Robots/Scarab.png', frameWidth: 16, frameHeight: 16 },
   { kind: 'spritesheet', key: 'enemy_tank',      path: 'assets/Robots/Spider.png',     frameWidth: 16, frameHeight: 16 },
   { kind: 'spritesheet', key: 'enemy_flyer',     path: 'assets/Robots/Hornet.png',     frameWidth: 48, frameHeight: 24 },
   { kind: 'spritesheet', key: 'enemy_boss',      path: 'assets/Robots/Centipede.png',  frameWidth: 16, frameHeight: 16 },
@@ -205,10 +208,20 @@ export interface EnemyAssetInfo {
   frameRate: number;
   scale: number;
   deathFxKey: string;
+  /** Optional tint to apply on spawn (e.g. color variant for grunts). 0xffffff = no tint. */
+  variantTint?: number;
 }
 
+/** Grunt color variants — rotate by enemy ID hash. */
+export const GRUNT_VARIANT_KEYS = ['enemy_grunt', 'enemy_grunt_1', 'enemy_grunt_2'] as const;
+/** Corresponding tints for each grunt variant (0xffffff = no tint). */
+export const GRUNT_VARIANT_TINTS = [0xffffff, 0xff9999, 0xaaddff] as const;
+
 export const ENEMY_ASSETS: EnemyAssetInfo[] = [
-  { key: 'enemy_grunt',     enemyType: 'grunt',     walkFrameStart: 5,  walkFrameEnd: 9,  frameRate: 8,  scale: 3,   deathFxKey: 'fx_small_explosion' },
+  // Grunt — 3 color variants (key rotates on spawn, tint applied at runtime)
+  { key: 'enemy_grunt',   enemyType: 'grunt', walkFrameStart: 5, walkFrameEnd: 9, frameRate: 8, scale: 3, deathFxKey: 'fx_small_explosion', variantTint: 0xffffff },
+  { key: 'enemy_grunt_1', enemyType: 'grunt', walkFrameStart: 5, walkFrameEnd: 9, frameRate: 8, scale: 3, deathFxKey: 'fx_small_explosion', variantTint: 0xff9999 },
+  { key: 'enemy_grunt_2', enemyType: 'grunt', walkFrameStart: 5, walkFrameEnd: 9, frameRate: 8, scale: 3, deathFxKey: 'fx_small_explosion', variantTint: 0xaaddff },
   { key: 'enemy_runner',    enemyType: 'runner',    walkFrameStart: 0,  walkFrameEnd: 7,  frameRate: 12, scale: 2.5, deathFxKey: 'fx_small_explosion' },
   { key: 'enemy_tank',      enemyType: 'tank',      walkFrameStart: 5,  walkFrameEnd: 9,  frameRate: 6,  scale: 4,   deathFxKey: 'fx_big_explosion'   },
   { key: 'enemy_flyer',     enemyType: 'flyer',     walkFrameStart: 0,  walkFrameEnd: 3,  frameRate: 8,  scale: 3,   deathFxKey: 'fx_small_explosion' },

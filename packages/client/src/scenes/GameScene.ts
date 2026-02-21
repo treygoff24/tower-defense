@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone } from '@td/shared';
 import { TILE_SIZE, MAP_CONFIGS, TOWER_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
-import { ENEMY_ASSETS, TOWER_ASSETS } from '../assets/manifest';
+import { ENEMY_ASSETS, TOWER_ASSETS, GRUNT_VARIANT_KEYS, GRUNT_VARIANT_TINTS } from '../assets/manifest';
 import type { TowerAssetInfo } from '../assets/manifest';
 import { AudioManager } from '../audio/AudioManager';
 import { DeathAnimator } from '../effects/DeathAnimator';

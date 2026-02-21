@@ -104,7 +104,8 @@ export class BootScene extends Phaser.Scene {
     // Rows: 0=idle(5f), 1=walk(5f), 2=firing(5f), 3=melee(5f), 4=destroyed(5f)
     // Centipede same row layout but many more rows (use row 0 = idle, row 1 = walk)
 
-    const robotKeys = ['enemy_grunt', 'enemy_tank', 'enemy_invisible'];
+    // enemy_grunt_1 and enemy_grunt_2 are color variants of enemy_grunt (same frames)
+    const robotKeys = ['enemy_grunt', 'enemy_grunt_1', 'enemy_grunt_2', 'enemy_tank', 'enemy_invisible'];
     for (const key of robotKeys) {
       this.safeCreateAnim(anims, `${key}_idle`, {
         key, frames: anims.generateFrameNumbers(key, { start: 0, end: 4 }),

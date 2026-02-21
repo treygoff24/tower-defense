@@ -231,7 +231,7 @@ describe('Multiplayer Socket.IO Integration', () => {
     expect(prepState.phase).toBe('prep');
 
     // Place a tower in build zone A (x:1, y:5)
-    const result = await sendCommand(client, { type: 'place_tower', configId: 'arrow_tower', x: 1, y: 5 });
+    const result = await sendCommand(client, { type: 'place_tower', configId: 'arrow_tower', x: 1, y: 2 });
     expect(result.ok).toBe(true);
 
     // Verify tower appears in state
@@ -394,7 +394,7 @@ describe('Multiplayer Socket.IO Integration', () => {
     const goldBefore = state.economy.gold;
 
     // Place arrow_tower (costs 50 gold)
-    await sendCommand(client, { type: 'place_tower', configId: 'arrow_tower', x: 1, y: 5 });
+    await sendCommand(client, { type: 'place_tower', configId: 'arrow_tower', x: 1, y: 2 });
     state = await waitForSnapshot(client);
     expect(state.economy.gold).toBe(goldBefore - 50);
 

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import type { GameState, GamePhase, ElementType } from '@td/shared';
-import { TOWER_CONFIGS } from '@td/shared';
+import type { GameState, GamePhase, ElementType, WaveConfig } from '@td/shared';
+import { TOWER_CONFIGS, WAVE_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { TowerPanel } from '../ui/TowerPanel';
 import { TowerInspector } from '../ui/TowerInspector';
@@ -56,6 +56,19 @@ export class HudScene extends Phaser.Scene {
   private startWavePulseTween: Phaser.Tweens.Tween | null = null;
   private prepPhasePulseTween: Phaser.Tweens.Tween | null = null;
   private goldBonusText: Phaser.GameObjects.Text | null = null;
+
+  /* Wave banner */
+  private lastBannerWave = 0;
+  private waveBannerContainer: Phaser.GameObjects.Container | null = null;
+
+  /* End-of-game statistics */
+  private statsEnemiesKilled = 0;
+  private statsGoldEarned    = 0;
+  private statsTowersBuilt   = 0;
+  private statsPrevAliveEnemies: Set<string> = new Set();
+  private statsPrevGold = 0;
+  private statsPrevTowers: Set<string> = new Set();
+  private statsTowerShots: Map<string, { configId: string; shots: number }> = new Map();
 
   constructor() {
     super({ key: 'HudScene' });
@@ -470,9 +483,7 @@ export class HudScene extends Phaser.Scene {
       this.stopButtonPulse();
     }
 
-    if (state.phase === 'victory' || state.phase === 'defeat') {
-      this.showGameOverOverlay(state.phase);
-    }
+    // Note: victory/defeat overlays are now handled by ResultScene (launched by GameClient)
   }
 
   private showDamageIndicator(currentHp: number, prevHp: number): void {

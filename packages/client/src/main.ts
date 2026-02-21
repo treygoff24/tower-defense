@@ -4,6 +4,7 @@ import { LobbyScene } from './scenes/LobbyScene';
 import { ClassSelectScene } from './scenes/ClassSelectScene';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
+import { ResultScene } from './scenes/ResultScene';
 import { GameClient } from './GameClient';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -12,7 +13,7 @@ const config: Phaser.Types.Core.GameConfig = {
   width: 1280,
   height: 720,
   backgroundColor: '#1a1a2e',
-  scene: [BootScene, LobbyScene, ClassSelectScene, GameScene, HudScene],
+  scene: [BootScene, LobbyScene, ClassSelectScene, GameScene, HudScene, ResultScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -51,7 +52,7 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
   // Ctrl+3: GameScene with mock state for visual testing
   if (e.key === '3' && import.meta.env.DEV) {
     e.preventDefault();
-    const scenes = ['BootScene', 'LobbyScene', 'ClassSelectScene', 'GameScene', 'HudScene'];
+    const scenes = ['BootScene', 'LobbyScene', 'ClassSelectScene', 'GameScene', 'HudScene', 'ResultScene'];
     scenes.forEach(k => {
       const s = game.scene.getScene(k);
       if (s && game.scene.isActive(k) && k !== 'GameScene' && k !== 'HudScene') game.scene.stop(k);
@@ -110,8 +111,8 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
   const target = sceneMap[e.key];
   if (!target) return;
   e.preventDefault();
-  const scenes = ['BootScene', 'LobbyScene', 'ClassSelectScene', 'GameScene', 'HudScene'];
-  scenes.forEach(k => {
+  const scenes2 = ['BootScene', 'LobbyScene', 'ClassSelectScene', 'GameScene', 'HudScene', 'ResultScene'];
+  scenes2.forEach(k => {
     const s = game.scene.getScene(k);
     if (s && game.scene.isActive(k) && k !== target) game.scene.stop(k);
   });

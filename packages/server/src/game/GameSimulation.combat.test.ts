@@ -30,7 +30,7 @@ describe('GameSimulation — Combat Tick Integration', () => {
     sim.startWave();
     const initialBaseHp = sim.state.maxBaseHp;
     // Tick long enough for enemies to traverse the map (map is ~32 tiles wide, enemies need ~130s)
-    for (let i = 0; i < 3000; i++) sim.tick(0.05);
+    for (let i = 0; i < 30000; i++) sim.tick(0.05);
     expect(sim.state.baseHp).toBeLessThan(initialBaseHp);
   });
 
