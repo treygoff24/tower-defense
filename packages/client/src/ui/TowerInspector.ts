@@ -27,6 +27,8 @@ export interface TowerInspectorOptions {
   gold: number;
   /** Initial targeting mode */
   targetingMode: TargetingMode;
+  /** Name of the player who owns this tower */
+  ownerName?: string;
   onSell: () => void;
   onUpgrade: () => void;
   onTargetingChange: (mode: TargetingMode) => void;
@@ -99,6 +101,19 @@ export class TowerInspector {
       .setOrigin(0.5, 0.5);
     items.push(tierText);
     cy += 18;
+
+    // ── Owner ────────────────────────────────────────────────────────────────
+    if (this.opts.ownerName) {
+      const ownerText = this.scene.add
+        .text(0, cy, `👤 Owned by: ${this.opts.ownerName}`, {
+          fontSize: '11px',
+          fontFamily: 'Arial',
+          color: '#88ccff',
+        })
+        .setOrigin(0.5, 0.5);
+      items.push(ownerText);
+      cy += 18;
+    }
 
     // ── Separator ───────────────────────────────────────────────────────────
     cy += 4;

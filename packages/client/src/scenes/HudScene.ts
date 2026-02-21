@@ -70,6 +70,9 @@ export class HudScene extends Phaser.Scene {
   private statsPrevTowers: Set<string> = new Set();
   private statsTowerShots: Map<string, { configId: string; shots: number }> = new Map();
 
+  /* Latest game state (used for player lookups) */
+  private lastKnownState: GameState | null = null;
+
   constructor() {
     super({ key: 'HudScene' });
   }
@@ -348,6 +351,7 @@ export class HudScene extends Phaser.Scene {
 
   syncState(state: GameState): void {
     if (!this.goldText) return;
+    this.lastKnownState = state;
 
     // ── Stats tracking ────────────────────────────────────────────
     // Enemies killed: alive last tick but now gone/dead
@@ -1159,7 +1163,8 @@ export class HudScene extends Phaser.Scene {
     instanceId: string,
     configId: string,
     tier: number,
-    refund: number
+    refund: number,
+    ownerId?: string
   ): void {
     // Dismiss any existing inspector first
     this.hideTowerInspector();
@@ -1181,6 +1186,12 @@ export class HudScene extends Phaser.Scene {
 
     const targetingMode = this.targetingModes.get(instanceId) ?? 'first';
 
+    // Look up owner's name from latest game state
+    let ownerName: string | undefined;
+    if (ownerId && this.lastKnownState) {
+      ownerName = this.lastKnownState.players[ownerId]?.name;
+    }
+
     this.towerInspectorInst = new TowerInspector(this, panelX, panelY, {
       instanceId,
       configId,
@@ -1188,6 +1199,7 @@ export class HudScene extends Phaser.Scene {
       refund,
       gold: this.hudGold,
       targetingMode,
+      ownerName,
 
       onSell: () => {
         const gameClient = this.registry.get('gameClient') as GameClient;

@@ -710,14 +710,16 @@ export class GameScene extends Phaser.Scene {
         const cfg = TOWER_CONFIGS[tv.configId];
         const refund = cfg ? Math.round(cfg.costGold * 0.5) : 0;
         // Look up tier from latest game state
-        const gameClient = this.registry.get('gameClient') as { getLatestState(): { towers: Record<string, { tier: number }> } | null } | undefined;
+        const gameClient = this.registry.get('gameClient') as { getLatestState(): { towers: Record<string, { tier: number; ownerId?: string }> } | null } | undefined;
         const state = gameClient?.getLatestState();
         const tier = state?.towers[instanceId]?.tier ?? 1;
+        const ownerId = state?.towers[instanceId]?.ownerId ?? '';
         this.events.emit('placed-tower-clicked', {
           instanceId,
           configId: tv.configId,
           refund,
           tier,
+          ownerId,
         });
       } else {
         this.events.emit('sell-panel-close');

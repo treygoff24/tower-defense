@@ -222,14 +222,16 @@ export class TowerPanel {
     const itemWidth = this.panelWidth - 20;
     const iH = this.itemHeight - 5;
 
-    const elementBuildingKeys: Record<ElementType | 'shared', string> = {
+    // Per-tower unique sprites (falls back to element defaults when missing)
+    const towerAsset = TOWER_ASSETS[config.id];
+    const elementBuildingFallbacks: Record<ElementType | 'shared', string> = {
       fire: 'building_yellow',
       water: 'building_blue',
       ice: 'building_black',
       poison: 'building_purple',
       shared: 'building_blue',
     };
-    const elementSoldierKeys: Record<ElementType | 'shared', string> = {
+    const elementSoldierFallbacks: Record<ElementType | 'shared', string> = {
       fire: 'ts_fire_idle',
       water: 'ts_water_idle',
       ice: 'ts_ice_idle',
@@ -276,7 +278,8 @@ export class TowerPanel {
     }
 
     // ── Building thumbnail ────────────────────────────────────────
-    const buildingKey = elementBuildingKeys[config.class] ?? 'building_blue';
+    const buildingKey =
+      towerAsset?.buildingKey ?? elementBuildingFallbacks[config.class] ?? 'building_blue';
     const thumbSize = 36;
     const thumbX = -itemWidth / 2 + thumbSize / 2 + 4;
     let thumb: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
@@ -295,14 +298,15 @@ export class TowerPanel {
       );
     }
 
-    // Soldier sprite (frame 0)
-    const soldierKey = elementSoldierKeys[config.class] ?? 'ts_shared_idle';
+    // Soldier sprite (frame 0) — use per-tower unique idle sprite
+    const soldierKey =
+      towerAsset?.idleKey ?? elementSoldierFallbacks[config.class] ?? 'ts_shared_idle';
     let soldierThumb: Phaser.GameObjects.Sprite | null = null;
     if (this.scene.textures.exists(soldierKey)) {
       soldierThumb = this.scene.add.sprite(thumbX - 2, -4, soldierKey, 0);
-      // Tiny Swords units are 192px (or 320px for Lancer) — scale to fit thumbnail
-      const isLancer = soldierKey.includes('ice');
-      soldierThumb.setScale(isLancer ? 0.09 : 0.15);
+      // 320px frame (Lancer) needs smaller scale than 192px frame
+      const isLargeFrame = (towerAsset?.frameSize ?? 192) >= 320;
+      soldierThumb.setScale(isLargeFrame ? 0.09 : 0.15);
       soldierThumb.setAlpha(alpha);
     }
 
