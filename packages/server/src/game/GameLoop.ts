@@ -19,7 +19,8 @@ export class GameLoop {
 
     this.intervalId = setInterval(() => {
       const now = performance.now();
-      const dt = (now - this.lastTime) / 1000;
+      let dt = (now - this.lastTime) / 1000;
+      dt = Math.min(dt, 0.1);
       this.lastTime = now;
       this.onTick(dt);
     }, TICK_DURATION_MS);

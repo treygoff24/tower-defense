@@ -47,7 +47,7 @@ function makeEnemy(statuses: { type: string; element: string }[] = []): EnemySta
     x: 5, y: 5, waypointIndex: 0, progress: 0, alive: true,
     statuses: statuses.map((s) => ({
       element: s.element as any,
-      type: s.type,
+      type: s.type as 'soaked' | 'burning' | 'cold' | 'frozen' | 'toxin',
       stacks: 1,
       remainingSec: 5,
     })),

@@ -48,7 +48,8 @@ io.on('connection', (socket) => {
   });
 
   // Dev-only: cheat commands for testing
-  socket.on('dev_cheat', (cheat: { type: string; amount?: number }, ack: (result: { ok: boolean }) => void) => {
+  socket.on('dev_cheat', (cheat: { type: string; amount?: number }, ack: (result: { ok: boolean; reason?: string }) => void) => {
+    if (process.env.NODE_ENV === 'production') { ack?.({ ok: false, reason: 'disabled' }); return; }
     if (cheat.type === 'add_gold') {
       sim.cheatAddGold(cheat.amount ?? 10000);
     }
