@@ -136,3 +136,40 @@ describe('GameSimulation — Phase Management', () => {
     expect(sim.state.phase).toBe('combat');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────
+// wave_completed event emission  (Bug 8)
+// ─────────────────────────────────────────────────────────────────
+describe('GameSimulation — wave_completed event', () => {
+  let sim: GameSimulation;
+
+  beforeEach(() => {
+    sim = GameSimulation.create('test-room-wave');
+    sim.addPlayer('p1', 'Alice');
+    sim.selectClass('p1', 'fire');
+  });
+
+  it('emits wave_completed event with correct goldReward when wave ends', () => {
+    sim.readyUp('p1');
+    sim.startGame();
+    sim.startWave();
+
+    // Clear any existing pending events
+    sim.drainEvents();
+
+    // Force spawn queue empty so the wave-complete check fires on next tick
+    (sim as any).spawnQueue = [];
+
+    // Tick once — triggers: spawnQueue empty + no alive enemies → wave complete
+    sim.tick(0.016);
+
+    const events = sim.drainEvents();
+    const waveCompleted = events.find((e) => e.type === 'wave_completed');
+    expect(waveCompleted).toBeDefined();
+    if (waveCompleted && waveCompleted.type === 'wave_completed') {
+      // Formula: (40 + 10 * wave) * playerCount; wave=1, playerCount=1
+      expect(waveCompleted.goldReward).toBe(50);
+      expect(waveCompleted.wave).toBe(1);
+    }
+  });
+});
