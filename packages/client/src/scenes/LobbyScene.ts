@@ -171,12 +171,7 @@ export class LobbyScene extends Phaser.Scene {
       inputBg.strokeRoundedRect(inputX, inputY, inputW, inputH, inputR);
     });
     inputHit.on('pointerdown', () => {
-      const entered = prompt('Enter your name:', this.playerName);
-      if (entered && entered.trim()) {
-        this.playerName = entered.trim().slice(0, 16);
-        nameText.setText(this.playerName);
-        cursor.setX(W / 2 + nameText.width / 2 + 2 * S);
-      }
+      this.openNameInput(inputX, inputY, inputW, inputH, nameText, cursor, W);
     });
 
     // ── Join button ───────────────────────────────────────────────
@@ -201,6 +196,79 @@ export class LobbyScene extends Phaser.Scene {
 
     // ── Fade in ───────────────────────────────────────────────────
     this.cameras.main.fadeIn(500, 0, 0, 0);
+  }
+
+  /**
+   * Positions a native HTML <input> over the Phaser name field so the player
+   * can edit their name with full browser text-editing support (cursor, selection,
+   * backspace, mobile keyboard, etc.) — no modal prompt.
+   *
+   * Coordinate mapping:
+   *   canvas-space px / canvasW * 100  → % of viewport width  (left, width)
+   *   canvas-space px / canvasH * 100  → % of viewport height (top, height)
+   * The #game-container canvas is CSS-stretched to fill 100vw × 100vh.
+   */
+  private openNameInput(
+    inputX: number,
+    inputY: number,
+    inputW: number,
+    inputH: number,
+    nameText: Phaser.GameObjects.Text,
+    cursor: Phaser.GameObjects.Text,
+    W: number,
+  ): void {
+    const H = this.cameras.main.height;
+
+    // Create the element once; replace it each open to wipe stale listeners.
+    const old = document.getElementById('player-name-input');
+    const input = document.createElement('input');
+    input.id = 'player-name-input';
+    input.type = 'text';
+    input.maxLength = 16;
+
+    if (old) {
+      old.parentNode?.replaceChild(input, old);
+    } else {
+      document.body.appendChild(input);
+    }
+
+    // Map canvas-space coordinates → CSS viewport percentages.
+    input.style.left   = `${(inputX / W) * 100}vw`;
+    input.style.top    = `${(inputY / H) * 100}vh`;
+    input.style.width  = `${(inputW / W) * 100}vw`;
+    input.style.height = `${(inputH / H) * 100}vh`;
+    // Font size scales with viewport width, matching the canvas horizontal scale.
+    input.style.fontSize = `${((22 * S) / W) * 100}vw`;
+
+    input.value = this.playerName;
+    input.style.display = 'block';
+
+    // Hide the Phaser text objects while the HTML input is active to avoid ghost/double text.
+    nameText.setVisible(false);
+    cursor.setVisible(false);
+
+    // Focus after a microtask so Phaser's pointerdown doesn't immediately blur it.
+    setTimeout(() => { input.focus(); input.select(); }, 0);
+
+    const commit = () => {
+      const val = input.value.trim();
+      if (val) {
+        this.playerName = val.slice(0, 16);
+        nameText.setText(this.playerName);
+        cursor.setX(W / 2 + nameText.width / 2 + 2 * S);
+      }
+      input.style.display = 'none';
+      nameText.setVisible(true);
+      cursor.setVisible(true);
+    };
+
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault();
+        commit();
+      }
+    });
+    input.addEventListener('blur', commit);
   }
 
   private createButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Container {

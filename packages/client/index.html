@@ -10,6 +10,23 @@
     #game-container { width: 100vw; height: 100vh; }
     /* Smooth bilinear interpolation when the browser CSS-scales the canvas */
     canvas { image-rendering: auto; }
+    /* Inline name editor overlay — shown over the Phaser canvas */
+    #player-name-input {
+      position: fixed;
+      display: none;
+      background: rgba(13, 26, 48, 0.95);
+      border: 2px solid #00ff88;
+      border-radius: 10px;
+      color: #ffffff;
+      font-family: "Arial Black", Arial, sans-serif;
+      font-weight: bold;
+      text-align: center;
+      outline: none;
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.35);
+      z-index: 9999;
+      /* padding keeps text vertically centered */
+      padding: 0 12px;
+    }
   </style>
 </head>
 <body>
