@@ -5,6 +5,7 @@ import { GameClient } from '../GameClient';
 import { ENEMY_ASSETS, TOWER_ASSETS } from '../assets/manifest';
 import type { TowerAssetInfo } from '../assets/manifest';
 import { AudioManager } from '../audio/AudioManager';
+import { DeathAnimator } from '../effects/DeathAnimator';
 
 // ─── Per-tower runtime state ─────────────────────────────────────────────────
 interface TowerVisual {
@@ -51,6 +52,9 @@ export class GameScene extends Phaser.Scene {
   // ── Audio ──────────────────────────────────────────────────────────
   private audio = new AudioManager();
 
+  // ── Effects ────────────────────────────────────────────────────────
+  private deathAnimator!: DeathAnimator;
+
   // ── Visuals ────────────────────────────────────────────────────────
   private towers: Map<string, TowerVisual> = new Map();
   private enemies: Map<string, EnemyVisual> = new Map();
@@ -85,6 +89,9 @@ export class GameScene extends Phaser.Scene {
 
     // Audio
     this.audio.bind(this);
+
+    // Effects
+    this.deathAnimator = new DeathAnimator(this);
 
     // Layering objects
     this.tileLayer = this.add.group();
@@ -1122,7 +1129,10 @@ export class GameScene extends Phaser.Scene {
     // Floating skull text at death position
     this.spawnFloatingText(x, y - 10, '💀', 0xffd700, 16);
 
-    // Death animation before destroy
+    // Death animation (cosmetic — purely client-side)
+    this.deathAnimator.playDeath(x, y);
+
+    // Original death animation before destroy
     sprite.setTint(0xff4400);
     this.tweens.add({
       targets: sprite,
