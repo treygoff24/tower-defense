@@ -1,5 +1,5 @@
 // packages/server/src/game/GameSimulation.ts
-import type { GameState, ElementType, TowerConfig, WaveConfig, MapConfig, ReactionConfig, TargetingMode } from '@td/shared';
+import type { GameState, ElementType, TowerConfig, WaveConfig, MapConfig, ReactionConfig, TargetingMode, ServerEvent } from '@td/shared';
 import { PREP_PHASE_DURATION_SEC, TOWER_CONFIGS, WAVE_CONFIGS, MAP_CONFIGS, REACTION_CONFIGS, ENEMY_BASE_DAMAGE } from '@td/shared';
 import { GameRoom } from '../rooms/GameRoom.js';
 import { EconomySystem } from '../systems/EconomySystem.js';
@@ -25,6 +25,7 @@ export class GameSimulation {
   private reactionSystem: ReactionSystem;
   private spawnQueue: SpawnEvent[] = [];
   private waveElapsedSec = 0;
+  private pendingEvents: ServerEvent[] = [];
 
   private constructor(
     room: GameRoom,
@@ -56,6 +57,13 @@ export class GameSimulation {
       towers: this.towerSystem.getTowersAsRecord(),
       enemies: this.enemySystem.getEnemiesAsRecord(),
     };
+  }
+
+  /** Drain and return all pending server events accumulated since last call. */
+  drainEvents(): ServerEvent[] {
+    const events = this.pendingEvents;
+    this.pendingEvents = [];
+    return events;
   }
 
   addPlayer(id: string, name: string): CommandResult {
@@ -190,6 +198,24 @@ export class GameSimulation {
     for (const tower of towers) {
       const attack = this.combatSystem.processAttack(tower, aliveEnemies, this.room.state.tick);
       if (!attack) continue;
+
+      // Emit tower_fired event for clients (visual projectile)
+      const targetEnemy = this.enemySystem.getEnemy(attack.targetId);
+      if (targetEnemy) {
+        const towerConfig = TOWER_CONFIGS[tower.configId];
+        const element = towerConfig?.class !== 'shared' ? towerConfig?.class : undefined;
+        this.pendingEvents.push({
+          type: 'tower_fired',
+          towerId: attack.towerId,
+          targetId: attack.targetId,
+          damage: attack.damage,
+          element,
+          towerX: tower.x,
+          towerY: tower.y,
+          targetX: targetEnemy.x,
+          targetY: targetEnemy.y,
+        });
+      }
 
       // Apply primary damage
       this.enemySystem.damageEnemy(attack.targetId, attack.damage);

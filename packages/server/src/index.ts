@@ -26,6 +26,10 @@ let sim = GameSimulation.create('main-room');
 // Start game loop
 const gameLoop = new GameLoop((dt: number) => {
   sim.tick(dt);
+  // Broadcast any pending server events (e.g. tower_fired) to all clients
+  for (const event of sim.drainEvents()) {
+    io.emit('event', event);
+  }
   io.emit('snapshot', sim.state);
 });
 

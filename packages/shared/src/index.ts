@@ -248,6 +248,7 @@ export type ServerEvent =
   | { type: 'enemy_damaged'; instanceId: string; damage: number; newHp: number }
   | { type: 'enemy_killed'; instanceId: string; bounty: number }
   | { type: 'reaction_triggered'; reaction: ReactionType; x: number; y: number; damage: number }
+  | { type: 'tower_fired'; towerId: string; targetId: string; damage: number; element?: string; towerX: number; towerY: number; targetX: number; targetY: number }
   | { type: 'base_damaged'; damage: number; remainingHp: number }
   | { type: 'wave_started'; wave: number; telegraph: string }
   | { type: 'wave_completed'; wave: number; goldReward: number }

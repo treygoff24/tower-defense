@@ -1,12 +1,17 @@
 // packages/client/src/networking/NetworkManager.ts
 import { io, Socket } from 'socket.io-client';
-import type { ClientCommand, GameState, ElementType } from '@td/shared';
+import type { ClientCommand, GameState, ElementType, ServerEvent } from '@td/shared';
 
 type SnapshotCallback = (state: GameState) => void;
+
+/** Payload shape extracted from the tower_fired ServerEvent. */
+export type TowerFiredPayload = Extract<ServerEvent, { type: 'tower_fired' }>;
+type TowerFiredCallback = (event: TowerFiredPayload) => void;
 
 export class NetworkManager {
   private socket: Socket | null = null;
   private onSnapshot: SnapshotCallback | null = null;
+  private onTowerFiredCallback: TowerFiredCallback | null = null;
   private serverUrl: string;
 
   constructor(serverUrl = 'http://localhost:3001') {
@@ -35,6 +40,13 @@ export class NetworkManager {
         this.onSnapshot?.(state);
       });
 
+      // Route individual ServerEvents emitted by the server
+      this.socket.on('event', (event: ServerEvent) => {
+        if (event.type === 'tower_fired') {
+          this.onTowerFiredCallback?.(event as TowerFiredPayload);
+        }
+      });
+
       this.socket.on('disconnect', (reason) => {
         console.warn('Disconnected:', reason);
       });
@@ -43,6 +55,10 @@ export class NetworkManager {
 
   onGameSnapshot(callback: SnapshotCallback): void {
     this.onSnapshot = callback;
+  }
+
+  onTowerFired(callback: TowerFiredCallback): void {
+    this.onTowerFiredCallback = callback;
   }
 
   sendCommand(command: ClientCommand): Promise<{ ok: boolean; reason?: string }> {
