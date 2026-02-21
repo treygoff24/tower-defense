@@ -322,4 +322,4 @@ Both `Tooltip.ts` and `TowerInspector.ts` are non-trivial (192 and 454 lines res
 
 ---
 
-*All 168 tests pass. Typecheck clean.*
+*Final: 240 tests pass across all packages (159 server / 33 client / 48 shared). Typecheck clean. Wave 2 critical bugs BUG-1 and BUG-2 remain unresolved at HEAD.*
