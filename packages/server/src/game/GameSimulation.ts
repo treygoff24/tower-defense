@@ -92,7 +92,12 @@ export class GameSimulation {
   }
 
   startGame(): void {
-    if (this.room.state.phase === 'prep' || this.room.state.phase === 'combat') return;
+    if (
+      this.room.state.phase === 'prep' ||
+      this.room.state.phase === 'combat' ||
+      this.room.state.phase === 'victory' ||
+      this.room.state.phase === 'defeat'
+    ) return;
     this.economy.grantStartingGold(this.room.playerCount);
     this.room.state.phase = 'prep';
     this.room.state.prepTimeRemaining = PREP_PHASE_DURATION_SEC;
