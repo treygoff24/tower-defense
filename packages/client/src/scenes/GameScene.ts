@@ -85,6 +85,7 @@ export class GameScene extends Phaser.Scene {
   // ── Timing ────────────────────────────────────────────────────────
   private cloudTimer = 0;
   private lastBaseHp = -1;
+  private lastState: GameState | null = null;
 
   // ── Enemy Inspector (3D) ───────────────────────────────────────────
   private enemyInspector: EnemyInspector | null = null;
@@ -1588,6 +1589,26 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
   // Full state sync entry point
   // ─────────────────────────────────────────────────────────────────
+
+  /** Show a pulsing ping ring at tile coords */
+  private showPingMarker(tileX: number, tileY: number): void {
+    const px = tileX * TILE_SIZE + TILE_SIZE / 2;
+    const py = tileY * TILE_SIZE + TILE_SIZE / 2;
+    for (let i = 0; i < 3; i++) {
+      const ring = this.add.circle(px, py, 8, 0xffffff, 0).setStrokeStyle(2, 0xffcc00, 1);
+      ring.setDepth(9000);
+      this.tweens.add({
+        targets: ring,
+        scaleX: 2.5,
+        scaleY: 2.5,
+        alpha: 0,
+        delay: i * 400,
+        duration: 1200,
+        ease: 'Sine.Out',
+        onComplete: () => ring.destroy(),
+      });
+    }
+  }
 
   syncState(state: GameState): void {
     this.syncTowers(state.towers);
