@@ -53,6 +53,8 @@ export interface OnHitEffect {
 }
 
 // ── Tower Instance (runtime state) ─────────────────────────
+export type TargetingMode = 'first' | 'last' | 'strongest' | 'weakest' | 'closest';
+
 export interface TowerState {
   instanceId: string;
   configId: string;
@@ -62,6 +64,7 @@ export interface TowerState {
   y: number;
   currentTarget?: string;
   lastAttackTick: number;
+  targetingMode?: TargetingMode;
 }
 
 // ── Enemy Types ────────────────────────────────────────────
@@ -231,6 +234,7 @@ export type ClientCommand =
   | { type: 'place_tower'; configId: string; x: number; y: number }
   | { type: 'upgrade_tower'; instanceId: string }
   | { type: 'sell_tower'; instanceId: string }
+  | { type: 'set_targeting'; instanceId: string; mode: TargetingMode }
   | { type: 'start_wave' }
   | { type: 'reconnect'; playerId: string }
   | { type: 'chat'; message: string };

@@ -1,5 +1,5 @@
 // packages/server/src/game/GameSimulation.ts
-import type { GameState, ElementType, TowerConfig, WaveConfig, MapConfig, ReactionConfig } from '@td/shared';
+import type { GameState, ElementType, TowerConfig, WaveConfig, MapConfig, ReactionConfig, TargetingMode } from '@td/shared';
 import { PREP_PHASE_DURATION_SEC, TOWER_CONFIGS, WAVE_CONFIGS, MAP_CONFIGS, REACTION_CONFIGS, ENEMY_BASE_DAMAGE } from '@td/shared';
 import { GameRoom } from '../rooms/GameRoom.js';
 import { EconomySystem } from '../systems/EconomySystem.js';
@@ -104,13 +104,48 @@ export class GameSimulation {
     return { ok: result.ok, reason: result.reason };
   }
 
+  upgradeTower(playerId: string, instanceId: string): CommandResult & { newTier?: number } {
+    const tower = this.towerSystem.getTower(instanceId);
+    if (!tower) return { ok: false, reason: 'Tower not found' };
+    if (tower.ownerId !== playerId) return { ok: false, reason: 'You do not own this tower' };
+    if (tower.tier >= 3) return { ok: false, reason: 'Tower is already at max tier' };
+
+    const upgradeCost = this.towerSystem.getUpgradeCost(instanceId);
+    if (upgradeCost === null) return { ok: false, reason: 'Already at max tier' };
+    if (!this.economy.canAfford(upgradeCost)) return { ok: false, reason: 'Not enough gold' };
+
+    this.economy.spendGold(upgradeCost);
+    const result = this.towerSystem.upgradeTower(instanceId);
+
+    if (!result.ok) {
+      // Rollback gold deduction on unexpected failure
+      this.economy.addGold(upgradeCost);
+      return { ok: false, reason: result.reason };
+    }
+
+    // tower_upgraded event data is returned in the result; callers (e.g. index.ts)
+    // are responsible for emitting the ServerEvent to connected clients.
+    return { ok: true, newTier: result.newTier };
+  }
+
   sellTower(_playerId: string, instanceId: string): CommandResult & { goldRefund?: number } {
+    const phase = this.room.state.phase;
+    if (phase !== 'prep' && phase !== 'combat') {
+      return { ok: false, reason: `Tower selling not allowed during ${phase} phase` };
+    }
     const result = this.towerSystem.sellTower(instanceId);
     if (result.ok && result.goldRefund !== undefined) {
       this.economy.addGold(result.goldRefund);
       return { ok: true, goldRefund: result.goldRefund };
     }
     return { ok: result.ok, reason: result.reason };
+  }
+
+  setTargeting(_playerId: string, instanceId: string, mode: TargetingMode): CommandResult {
+    const tower = this.towerSystem.getTower(instanceId);
+    if (!tower) return { ok: false, reason: 'Tower not found' };
+    tower.targetingMode = mode;
+    return { ok: true };
   }
 
   startWave(): void {

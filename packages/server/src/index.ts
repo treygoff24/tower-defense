@@ -69,11 +69,24 @@ io.on('connection', (socket) => {
         case 'place_tower':
           result = sim.placeTower(socket.id, command.configId, command.x, command.y);
           break;
-        case 'upgrade_tower':
-          result = { ok: false, reason: 'upgrade_tower not yet implemented' };
+        case 'upgrade_tower': {
+          const upgradeResult = sim.upgradeTower(socket.id, command.instanceId);
+          if (upgradeResult.ok && upgradeResult.newTier !== undefined) {
+            // Emit tower_upgraded ServerEvent to the requesting client
+            socket.emit('event', {
+              type: 'tower_upgraded',
+              instanceId: command.instanceId,
+              newTier: upgradeResult.newTier,
+            } satisfies import('@td/shared').ServerEvent);
+          }
+          result = upgradeResult;
           break;
+        }
         case 'sell_tower':
           result = sim.sellTower(socket.id, command.instanceId);
+          break;
+        case 'set_targeting':
+          result = sim.setTargeting(socket.id, command.instanceId, command.mode);
           break;
         case 'start_wave':
           sim.startWave();
