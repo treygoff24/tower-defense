@@ -55,7 +55,7 @@ function createTestServer(): Promise<number> {
               result = { ok: true };
               break;
             case 'chat':
-              ioServer.emit('chat', { playerId: socket.id, message: command.message });
+              ioServer.emit('event', { type: 'chat_message', playerId: socket.id, message: command.message });
               result = { ok: true };
               break;
             default:
@@ -361,9 +361,11 @@ describe('Multiplayer Socket.IO Integration', () => {
     await sendCommand(c1, { type: 'join_game', playerName: 'Alice' });
     await sendCommand(c2, { type: 'join_game', playerName: 'Bob' });
 
-    // Listen for chat on c2
-    const chatPromise = new Promise<{ playerId: string; message: string }>((resolve) => {
-      c2.on('chat', (data) => resolve(data));
+    // Listen for chat on c2 — server emits 'event' with type 'chat_message'
+    const chatPromise = new Promise<{ type: string; playerId: string; message: string }>((resolve) => {
+      c2.on('event', (data) => {
+        if (data.type === 'chat_message') resolve(data);
+      });
     });
 
     // Send chat from c1

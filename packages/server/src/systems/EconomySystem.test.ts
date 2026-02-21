@@ -25,8 +25,10 @@ describe('EconomySystem', () => {
   });
 
   it('adds wave completion bonus', () => {
+    const startingGold = economy.state.gold;
     economy.addWaveBonus(5, 3); // wave 5, 3 players
-    expect(economy.state.gold).toBeGreaterThan(0);
+    // Formula: (40 + 10 * wave) * playerCount = (40 + 10 * 5) * 3 = 270
+    expect(economy.state.gold).toBe(startingGold + (40 + 10 * 5) * 3);
   });
 
   it('spends gold if sufficient', () => {

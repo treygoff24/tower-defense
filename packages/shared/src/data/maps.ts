@@ -42,7 +42,7 @@ export const MAP_CONFIGS: Record<string, MapConfig> = {
     tileSize: 64,
 
     // ── Waypoints ──────────────────────────────────────────────────────────
-    // 16 waypoints (WP0–WP15), creating S-curves and one central crossroads.
+    // 18 waypoints (WP0–WP17), creating S-curves and one central crossroads.
     waypoints: [
       { x: -1, y:  4 },   //  0 – off-screen entry (left edge, top zone)
       { x:  2, y:  4 },   //  1 – entry point; turn S

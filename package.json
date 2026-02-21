@@ -12,7 +12,8 @@
     "test:e2e:headed": "playwright test --headed",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "validate-assets": "npx ts-node scripts/validate-assets.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
