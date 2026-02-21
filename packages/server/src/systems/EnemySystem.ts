@@ -20,6 +20,7 @@ export class EnemySystem {
     speed: number,
     armor: number,
     tags: string[],
+    resistances?: string[],
   ): EnemyState {
     const spawn = this.waypoints[0];
     const instanceId = `enemy_${this.nextEnemyId++}`;
@@ -36,6 +37,7 @@ export class EnemySystem {
       progress: 0,
       statuses: [],
       alive: true,
+      resistances,
     };
     this.enemies.set(instanceId, enemy);
     return enemy;

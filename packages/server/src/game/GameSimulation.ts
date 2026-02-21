@@ -185,7 +185,7 @@ export class GameSimulation {
     // Spawn enemies from queue based on elapsed time
     while (this.spawnQueue.length > 0 && this.spawnQueue[0].spawnAtSec <= this.waveElapsedSec) {
       const spawn = this.spawnQueue.shift()!;
-      this.enemySystem.spawnEnemy(spawn.enemyType, spawn.hp, spawn.speed, spawn.armor, spawn.tags);
+      this.enemySystem.spawnEnemy(spawn.enemyType, spawn.hp, spawn.speed, spawn.armor, spawn.tags, spawn.resistances);
     }
 
     // Move enemies
@@ -242,7 +242,20 @@ export class GameSimulation {
           // Check elemental reactions
           const enemy = this.enemySystem.getEnemy(attack.targetId);
           if (enemy?.alive) {
-            this.reactionSystem.checkReaction(enemy, effect.element, attack.damage);
+            const reaction = this.reactionSystem.checkReaction(enemy, effect.element, attack.damage);
+            if (reaction) {
+              if (reaction.damage > 0) {
+                this.enemySystem.damageEnemy(enemy.instanceId, reaction.damage);
+              }
+              if (reaction.applyStatus) {
+                enemy.statuses.push({
+                  type: reaction.applyStatus,
+                  element: reaction.reaction.triggerElement,
+                  stacks: 1,
+                  remainingSec: reaction.statusDuration ?? 3,
+                });
+              }
+            }
           }
         }
       }
