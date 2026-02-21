@@ -186,15 +186,15 @@ describe('Data Configuration Tests', () => {
 
     it('map should have valid dimensions', () => {
       const map = MAP_CONFIGS.map_01;
-      expect(map.width).toBe(20);
-      expect(map.height).toBe(15);
+      expect(map.width).toBe(32);
+      expect(map.height).toBe(24);
       expect(map.tileSize).toBe(64);
     });
 
     it('map should have valid waypoints', () => {
       const map = MAP_CONFIGS.map_01;
-      expect(map.waypoints.length).toBeGreaterThanOrEqual(8);
-      expect(map.waypoints.length).toBeLessThanOrEqual(12);
+      expect(map.waypoints.length).toBeGreaterThanOrEqual(15);
+      expect(map.waypoints.length).toBeLessThanOrEqual(30);
 
       for (const wp of map.waypoints) {
         expect(typeof wp.x).toBe('number');
@@ -204,7 +204,7 @@ describe('Data Configuration Tests', () => {
 
     it('map should have valid build zones', () => {
       const map = MAP_CONFIGS.map_01;
-      expect(map.buildZones.length).toBe(6);
+      expect(map.buildZones.length).toBe(14);
 
       for (const zone of map.buildZones) {
         expect(zone.x).toBeGreaterThanOrEqual(0);
@@ -214,19 +214,27 @@ describe('Data Configuration Tests', () => {
       }
     });
 
-    it('map should have valid player zones', () => {
+    it('map should have valid player zones scaling 1-4 players (task 4A)', () => {
       const map = MAP_CONFIGS.map_01;
-      expect(map.playerZones.length).toBe(3);
+      expect(map.playerZones.length).toBe(4);
 
-      // Zone 0 at 1+ players
+      // Zones unlock by player count
       expect(map.playerZones[0].minPlayers).toBe(1);
-      // Zone 1 at 2+ players
       expect(map.playerZones[1].minPlayers).toBe(2);
-      // Zone 2 at 3+ players
       expect(map.playerZones[2].minPlayers).toBe(3);
+      expect(map.playerZones[3].minPlayers).toBe(4);
+
+      // All build-zone indices must be valid
+      const bzCount = map.buildZones.length;
+      for (const pz of map.playerZones) {
+        for (const idx of pz.buildZones) {
+          expect(idx).toBeGreaterThanOrEqual(0);
+          expect(idx).toBeLessThan(bzCount);
+        }
+      }
     });
 
-    it('path should wind through the map (have direction changes)', () => {
+    it('path should wind through the map (5+ direction changes)', () => {
       const map = MAP_CONFIGS.map_01;
       let directionChanges = 0;
       let prevWasHorizontal: boolean | null = null;
@@ -234,20 +242,100 @@ describe('Data Configuration Tests', () => {
       for (let i = 1; i < map.waypoints.length; i++) {
         const dx = map.waypoints[i].x - map.waypoints[i - 1].x;
         const dy = map.waypoints[i].y - map.waypoints[i - 1].y;
-
-        // Skip zero movement (consecutive waypoints at same position)
         if (dx === 0 && dy === 0) continue;
-
-        // Check if this segment is primarily horizontal or vertical
         const isHorizontal = Math.abs(dx) > Math.abs(dy);
-
         if (prevWasHorizontal !== null && prevWasHorizontal !== isHorizontal) {
           directionChanges++;
         }
         prevWasHorizontal = isHorizontal;
       }
-      // Should have at least some direction changes for interesting path
-      expect(directionChanges).toBeGreaterThanOrEqual(2);
+      expect(directionChanges).toBeGreaterThanOrEqual(5);
+    });
+
+    it('path crosses itself at least once (task 4A: crossroads)', () => {
+      const map = MAP_CONFIGS.map_01;
+
+      // Walk each axis-aligned segment and count visits per tile.
+      const tileCounts = new Map<string, number>();
+      const record = (tx: number, ty: number) => {
+        const key = `${tx},${ty}`;
+        tileCounts.set(key, (tileCounts.get(key) ?? 0) + 1);
+      };
+
+      for (let i = 1; i < map.waypoints.length; i++) {
+        const from = map.waypoints[i - 1];
+        const to   = map.waypoints[i];
+        const dx   = Math.sign(to.x - from.x);
+        const dy   = Math.sign(to.y - from.y);
+        let cx = Math.round(from.x);
+        let cy = Math.round(from.y);
+        const ex = Math.round(to.x);
+        const ey = Math.round(to.y);
+
+        while (cx !== ex || cy !== ey) {
+          record(cx, cy);
+          cx += dx;
+          cy += dy;
+        }
+        record(ex, ey);
+      }
+
+      const crossedTiles = [...tileCounts.values()].filter((c) => c >= 2);
+      expect(crossedTiles.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('no build zone tile should overlap a path tile (task 4A)', () => {
+      const map = MAP_CONFIGS.map_01;
+
+      // Collect on-map path tiles
+      const pathTiles = new Set<string>();
+      for (let i = 1; i < map.waypoints.length; i++) {
+        const from = map.waypoints[i - 1];
+        const to   = map.waypoints[i];
+        const dx   = Math.sign(to.x - from.x);
+        const dy   = Math.sign(to.y - from.y);
+        let cx = Math.round(from.x);
+        let cy = Math.round(from.y);
+        const ex = Math.round(to.x);
+        const ey = Math.round(to.y);
+
+        while (cx !== ex || cy !== ey) {
+          if (cx >= 0 && cx < map.width && cy >= 0 && cy < map.height) {
+            pathTiles.add(`${cx},${cy}`);
+          }
+          cx += dx;
+          cy += dy;
+        }
+        if (ex >= 0 && ex < map.width && ey >= 0 && ey < map.height) {
+          pathTiles.add(`${ex},${ey}`);
+        }
+      }
+
+      for (const zone of map.buildZones) {
+        for (let tx = zone.x; tx < zone.x + zone.width; tx++) {
+          for (let ty = zone.y; ty < zone.y + zone.height; ty++) {
+            expect(
+              pathTiles.has(`${tx},${ty}`),
+              `Build zone tile (${tx},${ty}) overlaps a path tile`
+            ).toBe(false);
+          }
+        }
+      }
+    });
+
+    it('map should have decorative tiles placed (task 4A)', () => {
+      const map = MAP_CONFIGS.map_01;
+      expect(map.decorations).toBeDefined();
+      expect(map.decorations!.length).toBeGreaterThan(0);
+
+      const validTypes = new Set(['tree', 'rock', 'bush']);
+      for (const dec of map.decorations!) {
+        expect(typeof dec.x).toBe('number');
+        expect(typeof dec.y).toBe('number');
+        expect(validTypes.has(dec.type),
+          `Unknown decoration type: ${dec.type}`
+        ).toBe(true);
+      }
     });
   });
 

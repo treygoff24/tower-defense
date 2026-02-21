@@ -158,20 +158,35 @@ export class BootScene extends Phaser.Scene {
       frameRate: 10, repeat: 0,
     });
 
-    // ── Tiny Swords Units (Towers) ─────────────────────────────────────
-    // Each element has an idle spritesheet (looping) and an attack spritesheet (one-shot).
-    // Single-row horizontal strips; frame counts vary per element.
-    const tsUnits: Array<{ element: string; idleEnd: number; attackEnd: number }> = [
-      { element: 'fire',   idleEnd: 7,  attackEnd: 3  },
-      { element: 'water',  idleEnd: 5,  attackEnd: 7  },
-      { element: 'ice',    idleEnd: 11, attackEnd: 2  },
-      { element: 'poison', idleEnd: 5,  attackEnd: 10 },
-      { element: 'shared', idleEnd: 7,  attackEnd: 3  },
+    // ── Tiny Swords Units (Towers — one anim per unique sprite key) ─────
+    // Each tower has an idle spritesheet (looping) and an attack spritesheet (one-shot).
+    // idleEnd/attackEnd are the last frame indices (0-based).
+    const tsUnits: Array<{ idleKey: string; idleEnd: number; attackKey: string; attackEnd: number }> = [
+      // Shared
+      { idleKey: 'ts_arrow_idle',      idleEnd: 5,  attackKey: 'ts_arrow_attack',     attackEnd: 7  }, // Red Archer
+      { idleKey: 'ts_amplifier_idle',  idleEnd: 5,  attackKey: 'ts_amplifier_attack', attackEnd: 10 }, // Yellow Monk
+      { idleKey: 'ts_ballista_idle',   idleEnd: 11, attackKey: 'ts_ballista_attack',  attackEnd: 2  }, // Red Lancer
+      { idleKey: 'ts_scout_idle',      idleEnd: 7,  attackKey: 'ts_scout_attack',     attackEnd: 5  }, // Yellow Pawn
+      // Fire
+      { idleKey: 'ts_fire_idle',       idleEnd: 7,  attackKey: 'ts_fire_attack',      attackEnd: 3  }, // Yellow Warrior
+      { idleKey: 'ts_inferno_idle',    idleEnd: 7,  attackKey: 'ts_inferno_attack',   attackEnd: 3  }, // Red Warrior
+      { idleKey: 'ts_magma_idle',      idleEnd: 11, attackKey: 'ts_magma_attack',     attackEnd: 2  }, // Yellow Lancer
+      // Water
+      { idleKey: 'ts_water_idle',      idleEnd: 5,  attackKey: 'ts_water_attack',     attackEnd: 7  }, // Blue Archer
+      { idleKey: 'ts_geyser_idle',     idleEnd: 5,  attackKey: 'ts_geyser_attack',    attackEnd: 10 }, // Blue Monk
+      { idleKey: 'ts_whirlpool_idle',  idleEnd: 11, attackKey: 'ts_whirlpool_attack', attackEnd: 2  }, // Blue Lancer
+      // Ice
+      { idleKey: 'ts_frost_idle',      idleEnd: 5,  attackKey: 'ts_frost_attack',     attackEnd: 7  }, // Black Archer
+      { idleKey: 'ts_blizzard_idle',   idleEnd: 7,  attackKey: 'ts_blizzard_attack',  attackEnd: 3  }, // Black Warrior
+      { idleKey: 'ts_ice_idle',        idleEnd: 11, attackKey: 'ts_ice_attack',       attackEnd: 2  }, // Black Lancer
+      // Poison
+      { idleKey: 'ts_venom_idle',      idleEnd: 5,  attackKey: 'ts_venom_attack',     attackEnd: 7  }, // Purple Archer
+      { idleKey: 'ts_plague_idle',     idleEnd: 11, attackKey: 'ts_plague_attack',    attackEnd: 2  }, // Purple Lancer
+      { idleKey: 'ts_poison_idle',     idleEnd: 5,  attackKey: 'ts_poison_attack',    attackEnd: 10 }, // Purple Monk
+      // Legacy shared (backward compat)
+      { idleKey: 'ts_shared_idle',     idleEnd: 7,  attackKey: 'ts_shared_attack',    attackEnd: 3  }, // Blue Warrior
     ];
-    for (const { element, idleEnd, attackEnd } of tsUnits) {
-      const idleKey = `ts_${element}_idle`;
-      const attackKey = `ts_${element}_attack`;
-
+    for (const { idleKey, idleEnd, attackKey, attackEnd } of tsUnits) {
       this.safeCreateAnim(anims, `${idleKey}_idle`, {
         key: idleKey,
         frames: anims.generateFrameNumbers(idleKey, { start: 0, end: idleEnd }),

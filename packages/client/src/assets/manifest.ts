@@ -35,22 +35,47 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'spritesheet', key: 'enemy_runner',    path: 'assets/Robots/Wasp.png',       frameWidth: 16, frameHeight: 16 },
   { kind: 'spritesheet', key: 'enemy_invisible', path: 'assets/Robots/Scarab.png',     frameWidth: 16, frameHeight: 16 },
 
-  // ── Tower Defenders — Tiny Swords Units ─────────────────────────────
+  // ── Tower Defenders — Tiny Swords Units (per-tower unique sprites) ──
+  // Shared towers
+  { kind: 'spritesheet', key: 'ts_arrow_idle',      path: 'assets/Tiny Swords (Free Pack)/Units/Red Units/Archer/Archer_Idle.png',          frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_arrow_attack',    path: 'assets/Tiny Swords (Free Pack)/Units/Red Units/Archer/Archer_Shoot.png',          frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_amplifier_idle',  path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Monk/Idle.png',                 frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_amplifier_attack',path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Monk/Heal.png',                 frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_ballista_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Red Units/Lancer/Lancer_Idle.png',           frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_ballista_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Red Units/Lancer/Lancer_Right_Attack.png',   frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_scout_idle',      path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Pawn/Pawn_Idle.png',            frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_scout_attack',    path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Pawn/Pawn_Interact Axe.png',    frameWidth: 192, frameHeight: 192 },
   // Fire element = Yellow faction
-  { kind: 'spritesheet', key: 'ts_fire_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Warrior/Warrior_Idle.png',    frameWidth: 192, frameHeight: 192 },
-  { kind: 'spritesheet', key: 'ts_fire_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Warrior/Warrior_Attack1.png', frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_fire_idle',       path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Warrior/Warrior_Idle.png',      frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_fire_attack',     path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Warrior/Warrior_Attack1.png',   frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_inferno_idle',    path: 'assets/Tiny Swords (Free Pack)/Units/Red Units/Warrior/Warrior_Idle.png',         frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_inferno_attack',  path: 'assets/Tiny Swords (Free Pack)/Units/Red Units/Warrior/Warrior_Attack1.png',      frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_magma_idle',      path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Lancer/Lancer_Idle.png',        frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_magma_attack',    path: 'assets/Tiny Swords (Free Pack)/Units/Yellow Units/Lancer/Lancer_Right_Attack.png',frameWidth: 320, frameHeight: 320 },
   // Water element = Blue faction (Archer)
-  { kind: 'spritesheet', key: 'ts_water_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Archer/Archer_Idle.png',  frameWidth: 192, frameHeight: 192 },
-  { kind: 'spritesheet', key: 'ts_water_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Archer/Archer_Shoot.png', frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_water_idle',      path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Archer/Archer_Idle.png',          frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_water_attack',    path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Archer/Archer_Shoot.png',         frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_geyser_idle',     path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Monk/Idle.png',                   frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_geyser_attack',   path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Monk/Heal.png',                   frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_whirlpool_idle',  path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Lancer/Lancer_Idle.png',          frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_whirlpool_attack',path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Lancer/Lancer_Right_Attack.png',  frameWidth: 320, frameHeight: 320 },
   // Ice element = Black faction (Lancer) — NOTE: 320×320 frame size
-  { kind: 'spritesheet', key: 'ts_ice_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Lancer/Lancer_Idle.png',         frameWidth: 320, frameHeight: 320 },
-  { kind: 'spritesheet', key: 'ts_ice_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Lancer/Lancer_Right_Attack.png', frameWidth: 320, frameHeight: 320 },
-  // Poison element = Purple faction (Monk)
-  { kind: 'spritesheet', key: 'ts_poison_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Monk/Idle.png', frameWidth: 192, frameHeight: 192 },
-  { kind: 'spritesheet', key: 'ts_poison_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Monk/Heal.png', frameWidth: 192, frameHeight: 192 },
-  // Shared = Blue faction (Warrior)
-  { kind: 'spritesheet', key: 'ts_shared_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Warrior/Warrior_Idle.png',    frameWidth: 192, frameHeight: 192 },
-  { kind: 'spritesheet', key: 'ts_shared_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Warrior/Warrior_Attack1.png', frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_frost_idle',      path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Idle.png',         frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_frost_attack',    path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Archer/Archer_Shoot.png',        frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_blizzard_idle',   path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Warrior/Warrior_Idle.png',       frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_blizzard_attack', path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Warrior/Warrior_Attack1.png',    frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_ice_idle',        path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Lancer/Lancer_Idle.png',         frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_ice_attack',      path: 'assets/Tiny Swords (Free Pack)/Units/Black Units/Lancer/Lancer_Right_Attack.png', frameWidth: 320, frameHeight: 320 },
+  // Poison element = Purple faction
+  { kind: 'spritesheet', key: 'ts_venom_idle',      path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Archer/Archer_Idle.png',        frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_venom_attack',    path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Archer/Archer_Shoot.png',       frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_plague_idle',     path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Lancer/Lancer_Idle.png',        frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_plague_attack',   path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Lancer/Lancer_Right_Attack.png',frameWidth: 320, frameHeight: 320 },
+  { kind: 'spritesheet', key: 'ts_poison_idle',     path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Monk/Idle.png',                 frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_poison_attack',   path: 'assets/Tiny Swords (Free Pack)/Units/Purple Units/Monk/Heal.png',                 frameWidth: 192, frameHeight: 192 },
+  // Legacy shared (kept for animation backward-compat)
+  { kind: 'spritesheet', key: 'ts_shared_idle',     path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Warrior/Warrior_Idle.png',        frameWidth: 192, frameHeight: 192 },
+  { kind: 'spritesheet', key: 'ts_shared_attack',   path: 'assets/Tiny Swords (Free Pack)/Units/Blue Units/Warrior/Warrior_Attack1.png',     frameWidth: 192, frameHeight: 192 },
 
   // ── Buildings (static backgrounds for towers) ──────────────────────
   { kind: 'image', key: 'building_blue',   path: 'assets/Tiny Swords (Free Pack)/Buildings/Blue Buildings/Tower.png' },
@@ -69,6 +94,7 @@ export const ASSET_MANIFEST: AssetEntry[] = [
   { kind: 'image', key: 'archery_blue',   path: 'assets/Tiny Swords (Free Pack)/Buildings/Blue Buildings/Archery.png' },
   { kind: 'image', key: 'archery_black',  path: 'assets/Tiny Swords (Free Pack)/Buildings/Black Buildings/Archery.png' },
   { kind: 'image', key: 'archery_purple', path: 'assets/Tiny Swords (Free Pack)/Buildings/Purple Buildings/Archery.png' },
+  { kind: 'image', key: 'archery_red',    path: 'assets/Tiny Swords (Free Pack)/Buildings/Red Buildings/Archery.png' },
 
   // ── Effect Spritesheets ────────────────────────────────────────────
   { kind: 'spritesheet', key: 'fx_big_explosion',   path: 'assets/Effects/big-explosion.png',   frameWidth: 32, frameHeight: 32 },
@@ -146,13 +172,30 @@ export interface TowerAssetInfo {
   unitScale: number;
 }
 
-export const TOWER_ASSETS: TowerAssetInfo[] = [
-  { idleKey: 'ts_fire_idle',   attackKey: 'ts_fire_attack',   element: 'fire',   buildingKey: 'building_yellow', frameSize: 192, idleFrames: 8,  attackFrames: 4,  projKey: 'proj_grenade', unitScale: 0.28 },
-  { idleKey: 'ts_water_idle',  attackKey: 'ts_water_attack',  element: 'water',  buildingKey: 'building_blue',   frameSize: 192, idleFrames: 6,  attackFrames: 8,  projKey: 'proj_bullet',  unitScale: 0.28 },
-  { idleKey: 'ts_ice_idle',    attackKey: 'ts_ice_attack',    element: 'ice',    buildingKey: 'building_black',  frameSize: 320, idleFrames: 12, attackFrames: 3,  projKey: 'proj_bullet',  unitScale: 0.17 },
-  { idleKey: 'ts_poison_idle', attackKey: 'ts_poison_attack', element: 'poison', buildingKey: 'building_purple', frameSize: 192, idleFrames: 6,  attackFrames: 11, projKey: 'proj_bullet',  unitScale: 0.28 },
-  { idleKey: 'ts_shared_idle', attackKey: 'ts_shared_attack', element: 'fire' as ElementType, buildingKey: 'building_blue', frameSize: 192, idleFrames: 8, attackFrames: 4, projKey: 'proj_bullet', unitScale: 0.28 },
-];
+/** Per-tower unique sprite & building assignment, keyed by configId. */
+export const TOWER_ASSETS: Record<string, TowerAssetInfo> = {
+  // ── Shared towers ─────────────────────────────────────────────────
+  arrow_tower:     { idleKey: 'ts_arrow_idle',      attackKey: 'ts_arrow_attack',     element: 'shared' as ElementType, buildingKey: 'archery_blue',    frameSize: 192, idleFrames: 6,  attackFrames: 8,  projKey: 'proj_bullet',  unitScale: 0.28 },
+  amplifier_tower: { idleKey: 'ts_amplifier_idle',  attackKey: 'ts_amplifier_attack', element: 'shared' as ElementType, buildingKey: 'building_yellow', frameSize: 192, idleFrames: 6,  attackFrames: 11, projKey: 'proj_bullet',  unitScale: 0.28 },
+  ballista:        { idleKey: 'ts_ballista_idle',   attackKey: 'ts_ballista_attack',  element: 'shared' as ElementType, buildingKey: 'building_red',    frameSize: 320, idleFrames: 12, attackFrames: 3,  projKey: 'proj_rpg',     unitScale: 0.17 },
+  scout_tower:     { idleKey: 'ts_scout_idle',      attackKey: 'ts_scout_attack',     element: 'shared' as ElementType, buildingKey: 'archery_yellow',  frameSize: 192, idleFrames: 8,  attackFrames: 6,  projKey: 'proj_bullet',  unitScale: 0.28 },
+  // ── Fire towers ───────────────────────────────────────────────────
+  flame_spire:     { idleKey: 'ts_fire_idle',       attackKey: 'ts_fire_attack',      element: 'fire',                  buildingKey: 'building_yellow', frameSize: 192, idleFrames: 8,  attackFrames: 4,  projKey: 'proj_grenade', unitScale: 0.28 },
+  inferno_cannon:  { idleKey: 'ts_inferno_idle',    attackKey: 'ts_inferno_attack',   element: 'fire',                  buildingKey: 'building_red',    frameSize: 192, idleFrames: 8,  attackFrames: 4,  projKey: 'proj_grenade', unitScale: 0.28 },
+  magma_pool:      { idleKey: 'ts_magma_idle',      attackKey: 'ts_magma_attack',     element: 'fire',                  buildingKey: 'archery_yellow',  frameSize: 320, idleFrames: 12, attackFrames: 3,  projKey: 'proj_grenade', unitScale: 0.17 },
+  // ── Water towers ──────────────────────────────────────────────────
+  tidal_tower:     { idleKey: 'ts_water_idle',      attackKey: 'ts_water_attack',     element: 'water',                 buildingKey: 'archery_blue',    frameSize: 192, idleFrames: 6,  attackFrames: 8,  projKey: 'proj_bullet',  unitScale: 0.28 },
+  geyser:          { idleKey: 'ts_geyser_idle',     attackKey: 'ts_geyser_attack',    element: 'water',                 buildingKey: 'building_blue',   frameSize: 192, idleFrames: 6,  attackFrames: 11, projKey: 'proj_bullet',  unitScale: 0.28 },
+  whirlpool:       { idleKey: 'ts_whirlpool_idle',  attackKey: 'ts_whirlpool_attack', element: 'water',                 buildingKey: 'building_blue',   frameSize: 320, idleFrames: 12, attackFrames: 3,  projKey: 'proj_bullet',  unitScale: 0.17 },
+  // ── Ice towers ────────────────────────────────────────────────────
+  frost_turret:    { idleKey: 'ts_frost_idle',      attackKey: 'ts_frost_attack',     element: 'ice',                   buildingKey: 'archery_black',   frameSize: 192, idleFrames: 6,  attackFrames: 8,  projKey: 'proj_bullet',  unitScale: 0.28 },
+  blizzard_tower:  { idleKey: 'ts_blizzard_idle',   attackKey: 'ts_blizzard_attack',  element: 'ice',                   buildingKey: 'building_black',  frameSize: 192, idleFrames: 8,  attackFrames: 4,  projKey: 'proj_bullet',  unitScale: 0.28 },
+  glacial_spike:   { idleKey: 'ts_ice_idle',        attackKey: 'ts_ice_attack',       element: 'ice',                   buildingKey: 'building_black',  frameSize: 320, idleFrames: 12, attackFrames: 3,  projKey: 'proj_bullet',  unitScale: 0.17 },
+  // ── Poison towers ─────────────────────────────────────────────────
+  venom_spitter:   { idleKey: 'ts_venom_idle',      attackKey: 'ts_venom_attack',     element: 'poison',                buildingKey: 'archery_purple',  frameSize: 192, idleFrames: 6,  attackFrames: 8,  projKey: 'proj_bullet',  unitScale: 0.28 },
+  plague_spreader: { idleKey: 'ts_plague_idle',     attackKey: 'ts_plague_attack',    element: 'poison',                buildingKey: 'building_purple', frameSize: 320, idleFrames: 12, attackFrames: 3,  projKey: 'proj_bullet',  unitScale: 0.17 },
+  miasma_cloud:    { idleKey: 'ts_poison_idle',     attackKey: 'ts_poison_attack',    element: 'poison',                buildingKey: 'building_purple', frameSize: 192, idleFrames: 6,  attackFrames: 11, projKey: 'proj_bullet',  unitScale: 0.28 },
+};
 
 export interface EnemyAssetInfo {
   key: string;

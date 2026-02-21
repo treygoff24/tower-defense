@@ -163,6 +163,12 @@ export interface Vec2 {
   y: number;
 }
 
+export interface Decoration {
+  x: number;
+  y: number;
+  type: 'tree' | 'rock' | 'bush';
+}
+
 export interface MapConfig {
   id: string;
   name: string;
@@ -172,6 +178,7 @@ export interface MapConfig {
   waypoints: Vec2[];
   buildZones: BuildZone[];
   playerZones: PlayerZone[];
+  decorations?: Decoration[];
 }
 
 export interface BuildZone {

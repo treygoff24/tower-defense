@@ -29,10 +29,6 @@ export class GameClient {
 
     // Relay tower_fired events from the server to the GameScene event bus
     this.network.onTowerFired((event) => {
-      this.gameScene?.events.emit('tower-fired', event);
-    });
-
-    this.network.onTowerFired((event) => {
       this.gameScene?.events.emit('tower_fired', event);
     });
   }

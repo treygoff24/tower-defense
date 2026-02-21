@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { TowerConfig, ElementType } from '@td/shared';
 import { TOWER_CONFIGS } from '@td/shared';
+import { TOWER_ASSETS } from '../assets/manifest.js';
 import { Tooltip } from './Tooltip.js';
 
 interface TowerDisplayInfo {
