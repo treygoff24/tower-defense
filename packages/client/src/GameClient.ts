@@ -132,6 +132,10 @@ export class GameClient {
     return this.network.upgradeTower(instanceId);
   }
 
+  async sendCommand(command: import('@td/shared').ClientCommand): Promise<{ ok: boolean; reason?: string }> {
+    return this.network.sendCommand(command);
+  }
+
   getLatestState(): GameState | null {
     return this.interpolator.getLatestState();
   }

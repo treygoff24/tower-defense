@@ -1611,6 +1611,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   syncState(state: GameState): void {
+    this.lastState = state;
     this.syncTowers(state.towers);
     this.syncEnemies(state.enemies);
   }
