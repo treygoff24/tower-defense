@@ -44,6 +44,16 @@ export class GameClient {
       const configId = curState?.towers[event.towerId]?.configId ?? event.towerId;
       this.hudScene?.recordTowerShot(event.towerId, configId);
     });
+
+    // Relay chat messages → HudScene
+    this.network.onChatMessage((event) => {
+      this.hudScene?.receiveChatMessage(event.playerName, event.message);
+    });
+
+    // Relay ping markers → GameScene
+    this.network.onPingMarker((event) => {
+      this.gameScene?.events.emit('ping_marker', { x: event.x, y: event.y });
+    });
   }
 
   private launchResultScene(state: GameState): void {
@@ -124,6 +134,14 @@ export class GameClient {
 
   async sendCommand(command: import('@td/shared').ClientCommand): Promise<{ ok: boolean; reason?: string }> {
     return this.network.sendCommand(command);
+  }
+
+  async sendChat(message: string): Promise<void> {
+    await this.network.sendChat(message);
+  }
+
+  async sendPing(x: number, y: number): Promise<void> {
+    await this.network.sendPing(x, y);
   }
 
   getLatestState(): GameState | null {

@@ -8,10 +8,18 @@ type SnapshotCallback = (state: GameState) => void;
 export type TowerFiredPayload = Extract<ServerEvent, { type: 'tower_fired' }>;
 type TowerFiredCallback = (event: TowerFiredPayload) => void;
 
+export type ChatMessagePayload = Extract<ServerEvent, { type: 'chat_message' }>;
+type ChatMessageCallback = (event: ChatMessagePayload) => void;
+
+export type PingMarkerPayload = Extract<ServerEvent, { type: 'ping_marker' }>;
+type PingMarkerCallback = (event: PingMarkerPayload) => void;
+
 export class NetworkManager {
   private socket: Socket | null = null;
   private onSnapshot: SnapshotCallback | null = null;
   private onTowerFiredCallback: TowerFiredCallback | null = null;
+  private onChatMessageCallback: ChatMessageCallback | null = null;
+  private onPingMarkerCallback: PingMarkerCallback | null = null;
   private serverUrl: string;
 
   constructor(serverUrl = 'http://localhost:3001') {
@@ -44,6 +52,10 @@ export class NetworkManager {
       this.socket.on('event', (event: ServerEvent) => {
         if (event.type === 'tower_fired') {
           this.onTowerFiredCallback?.(event as TowerFiredPayload);
+        } else if (event.type === 'chat_message') {
+          this.onChatMessageCallback?.(event as ChatMessagePayload);
+        } else if (event.type === 'ping_marker') {
+          this.onPingMarkerCallback?.(event as PingMarkerPayload);
         }
       });
 
@@ -59,6 +71,14 @@ export class NetworkManager {
 
   onTowerFired(callback: TowerFiredCallback): void {
     this.onTowerFiredCallback = callback;
+  }
+
+  onChatMessage(callback: ChatMessageCallback): void {
+    this.onChatMessageCallback = callback;
+  }
+
+  onPingMarker(callback: PingMarkerCallback): void {
+    this.onPingMarkerCallback = callback;
   }
 
   sendCommand(command: ClientCommand): Promise<{ ok: boolean; reason?: string }> {
@@ -111,6 +131,14 @@ export class NetworkManager {
 
   async startWave(): Promise<{ ok: boolean; reason?: string }> {
     return this.sendCommand({ type: 'start_wave' });
+  }
+
+  async sendChat(message: string): Promise<{ ok: boolean; reason?: string }> {
+    return this.sendCommand({ type: 'chat', message });
+  }
+
+  async sendPing(x: number, y: number): Promise<{ ok: boolean; reason?: string }> {
+    return this.sendCommand({ type: 'ping', x, y });
   }
 
   disconnect(): void {

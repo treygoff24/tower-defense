@@ -117,6 +117,7 @@ export class GameScene extends Phaser.Scene {
     this.rangePreview = this.add.graphics().setDepth(HUD_DEPTH - 1);
 
     // Input
+    this.input.mouse?.disableContextMenu(); // Allow right-click for ping
     this.input.on('pointermove', this.handleMouseMove, this);
     this.input.on('pointerdown', this.handleTileClick, this);
 
@@ -128,6 +129,9 @@ export class GameScene extends Phaser.Scene {
     this.events.on('enemy-killed', this.handleEnemyKilled, this);
     this.events.on('base-damaged', this.handleBaseDamaged, this);
     this.events.on('tower-sold-visual', this.handleTowerSoldVisual, this);
+    this.events.on('ping_marker', (data: { x: number; y: number }) => {
+      this.showPingMarker(data.x, data.y);
+    });
 
     // tower_fired: animate the attacking tower sprite (projectile handled by projectileManager)
     this.events.on('tower_fired', (event: { towerId: string; element?: string }) => {
@@ -693,6 +697,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleTileClick(pointer: Phaser.Input.Pointer): void {
+    // Right-click → send ping at tile coords
+    if (pointer.rightButtonDown()) {
+      const tileX = Math.floor(pointer.worldX / TILE_SIZE);
+      const tileY = Math.floor(pointer.worldY / TILE_SIZE);
+      const gameClient = this.registry.get('gameClient') as GameClient;
+      gameClient?.sendPing(tileX, tileY).catch((err: unknown) => console.error('Ping error:', err));
+      return;
+    }
+
     const tileX = Math.floor(pointer.worldX / TILE_SIZE);
     const tileY = Math.floor(pointer.worldY / TILE_SIZE);
 

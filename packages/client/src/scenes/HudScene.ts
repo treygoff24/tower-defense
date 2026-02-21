@@ -73,12 +73,19 @@ export class HudScene extends Phaser.Scene {
   /* Latest game state (used for player lookups) */
   private lastKnownState: GameState | null = null;
 
+  /* Chat system */
+  private chatInputActive = false;
+  private chatInputEl: HTMLInputElement | null = null;
+  private chatMessages: Array<{ sender: string; text: string; time: number }> = [];
+  private chatMsgObjects: Phaser.GameObjects.Container[] = [];
+
   constructor() {
     super({ key: 'HudScene' });
   }
 
   create(): void {
     this.createHudElements();
+    this.setupChatSystem();
   }
 
   private createHudElements(): void {
@@ -1005,6 +1012,145 @@ export class HudScene extends Phaser.Scene {
     });
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // Chat System
+  // ─────────────────────────────────────────────────────────────────
+
+  private setupChatSystem(): void {
+    if (!this.input.keyboard) return;
+
+    // Enter key → open chat input (if not already open)
+    const enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    enterKey.on('down', () => {
+      if (!this.chatInputActive) {
+        this.openChatInput();
+      }
+    });
+  }
+
+  private openChatInput(): void {
+    if (this.chatInputActive) return;
+    this.chatInputActive = true;
+
+    // Create a native DOM input for full keyboard capture
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 128;
+    input.placeholder = 'Type a message… (Enter to send, Escape to cancel)';
+    input.style.cssText = [
+      'position: absolute',
+      'bottom: 18px',
+      'left: 50%',
+      'transform: translateX(-50%)',
+      'width: 55%',
+      'padding: 7px 14px',
+      'background: rgba(0,0,10,0.88)',
+      'color: #ffffff',
+      'border: 1.5px solid #4488aa',
+      'border-radius: 6px',
+      'font-size: 14px',
+      'font-family: Arial',
+      'outline: none',
+      'z-index: 2000',
+      'box-sizing: border-box',
+    ].join(';');
+
+    document.body.appendChild(input);
+    input.focus();
+    this.chatInputEl = input;
+
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        const msg = input.value.trim();
+        if (msg) {
+          const gameClient = this.registry.get('gameClient') as GameClient;
+          gameClient?.sendChat(msg).catch((err: unknown) => console.error('Chat error:', err));
+        }
+        this.closeChatInput();
+      } else if (e.key === 'Escape') {
+        this.closeChatInput();
+      }
+    });
+  }
+
+  private closeChatInput(): void {
+    if (!this.chatInputActive) return;
+    this.chatInputActive = false;
+    if (this.chatInputEl) {
+      this.chatInputEl.remove();
+      this.chatInputEl = null;
+    }
+  }
+
+  /** Called by GameClient when a chat_message event is received. */
+  receiveChatMessage(sender: string, text: string): void {
+    const now = Date.now();
+    this.chatMessages.push({ sender, text, time: now });
+    if (this.chatMessages.length > 5) this.chatMessages.shift();
+    this.rebuildChatOverlay();
+  }
+
+  private rebuildChatOverlay(): void {
+    // Destroy existing message objects
+    for (const obj of this.chatMsgObjects) {
+      if (obj.active) obj.destroy();
+    }
+    this.chatMsgObjects = [];
+
+    if (this.chatMessages.length === 0) return;
+
+    const H = this.cameras.main.height;
+    const baseY = H - 80; // above the bottom UI
+
+    this.chatMessages.forEach((msg, i) => {
+      const rowY = baseY - (this.chatMessages.length - 1 - i) * 24;
+      const fullText = `${msg.sender}: ${msg.text}`;
+
+      const container = this.add.container(14, rowY);
+      container.setScrollFactor(0);
+      container.setDepth(150);
+
+      // Background pill
+      const textObj = this.add.text(8, 0, fullText, {
+        fontSize: '13px',
+        fontFamily: 'Arial',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 1,
+      }).setOrigin(0, 0.5);
+
+      const bg = this.add.graphics();
+      bg.fillStyle(0x000000, 0.65);
+      bg.fillRoundedRect(-2, -11, textObj.width + 20, 22, 4);
+
+      container.add([bg, textObj]);
+
+      // Fade out after 10 s from when message was received
+      const elapsed = Date.now() - msg.time;
+      const remaining = Math.max(0, 10000 - elapsed);
+
+      this.time.delayedCall(remaining, () => {
+        if (!container.active) return;
+        this.tweens.add({
+          targets: container,
+          alpha: 0,
+          duration: 600,
+          onComplete: () => {
+            container.destroy();
+            const idx = this.chatMessages.indexOf(msg);
+            if (idx >= 0) {
+              this.chatMessages.splice(idx, 1);
+              this.rebuildChatOverlay();
+            }
+          },
+        });
+      });
+
+      this.chatMsgObjects.push(container);
+    });
+  }
+
   showBaseDamage(damage: number): void {
     this.showDamageIndicator(0, damage);
   }
@@ -1250,4 +1396,5 @@ export class HudScene extends Phaser.Scene {
       this.inspectorBackdrop = null;
     }
   }
+
 }
