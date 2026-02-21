@@ -3,8 +3,10 @@
 **Reviewer:** Vulcan (subagent)  
 **Date:** 2026-02-20  
 **Commits reviewed:** `cf65fc5..aad09d9` (feat 2A tooltip, 2B inspector, 2C targeting) + `b3a2b57` (wave1 bugfix)  
-**Test status:** ✅ `pnpm test` — 153 server + 15 client tests, all pass  
+**Test status:** ✅ `pnpm test` — 159 server + 33 client + 48 shared = 240 tests, all pass  
 **Typecheck:** ✅ `pnpm typecheck` — clean across all 3 packages  
+
+> **Note:** Wave 3 commits (`feat(3A,3C,3D)`, `feat(3B)`, `feat(3D)`) landed during this review session. Final test/typecheck was run against HEAD which includes Wave 3. The Wave 2 bugs identified below **persist in HEAD** and are unresolved by Wave 3.
 
 ---
 
