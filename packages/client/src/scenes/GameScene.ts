@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone } from '@td/shared';
-import { TILE_SIZE, MAP_CONFIGS } from '@td/shared';
+import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone, EnemyStatus } from '@td/shared';
+import { TILE_SIZE, MAP_CONFIGS, REACTION_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { ENEMY_ASSETS, TOWER_ASSETS } from '../assets/manifest';
 import type { TowerAssetInfo } from '../assets/manifest';
 import { AudioManager } from '../audio/AudioManager';
+import { ReactionVFX } from '../effects/ReactionVFX';
+import { StatusIndicator } from '../ui/StatusIndicator';
 
 // ─── Per-tower runtime state ─────────────────────────────────────────────────
 interface TowerVisual {
@@ -20,6 +22,7 @@ interface EnemyVisual {
   sprite: Phaser.GameObjects.Sprite;
   hpBar: Phaser.GameObjects.Graphics;
   shadow: Phaser.GameObjects.Ellipse;
+  statusIndicator: StatusIndicator;
   maxHp: number;
   lastHp: number;
   type: string;
@@ -50,10 +53,16 @@ export class GameScene extends Phaser.Scene {
   // ── Audio ──────────────────────────────────────────────────────────
   private audio = new AudioManager();
 
+  // ── VFX ────────────────────────────────────────────────────────────
+  private reactionVfx!: ReactionVFX;
+
   // ── Visuals ────────────────────────────────────────────────────────
   private towers: Map<string, TowerVisual> = new Map();
   private enemies: Map<string, EnemyVisual> = new Map();
   private projectiles: LiveProjectile[] = [];
+
+  // ── Reaction detection ─────────────────────────────────────────────
+  private previousEnemyStatuses: Map<string, EnemyStatus[]> = new Map();
 
   // ── Map graphics ──────────────────────────────────────────────────
   private tileLayer!: Phaser.GameObjects.Group;        // tileset ground sprites
@@ -84,6 +93,9 @@ export class GameScene extends Phaser.Scene {
 
     // Audio
     this.audio.bind(this);
+
+    // VFX
+    this.reactionVfx = new ReactionVFX(this);
 
     // Layering objects
     this.tileLayer = this.add.group();
@@ -924,6 +936,51 @@ export class GameScene extends Phaser.Scene {
         const ev = this.enemies.get(id)!;
         this.updateEnemyVisual(ev, enemy);
       }
+
+      // Detect reactions by diffing statuses between snapshots
+      this.detectReactions(id, enemy);
+
+      // Store current statuses for next diff
+      this.previousEnemyStatuses.set(id, [...enemy.statuses]);
+    }
+
+    // Clean up previous status tracking for enemies no longer present
+    for (const id of this.previousEnemyStatuses.keys()) {
+      if (!current.has(id)) {
+        this.previousEnemyStatuses.delete(id);
+      }
+    }
+  }
+
+  /**
+   * Detect elemental reactions by comparing an enemy's current statuses
+   * against its previous snapshot. When a required status is consumed
+   * (disappears between frames), we infer the corresponding reaction fired.
+   */
+  private detectReactions(enemyId: string, enemy: EnemyState): void {
+    const prevStatuses = this.previousEnemyStatuses.get(enemyId);
+    if (!prevStatuses) return;
+
+    const currentStatusTypes = new Set(enemy.statuses.map((s) => s.type));
+    const consumedStatuses = prevStatuses.filter((s) => !currentStatusTypes.has(s.type));
+
+    if (consumedStatuses.length === 0) return;
+
+    const px = enemy.x * TILE_SIZE + TILE_SIZE / 2;
+    const py = enemy.y * TILE_SIZE + TILE_SIZE / 2;
+
+    for (const consumed of consumedStatuses) {
+      // Find which reaction consumes this status type
+      const reaction = REACTION_CONFIGS.find(
+        (r) => r.requiredStatus === consumed.type && r.consumesStatus,
+      );
+      if (!reaction) continue;
+
+      // Play VFX at enemy position
+      this.reactionVfx.playReaction(reaction.id, px, py, reaction.effect.value ?? 0);
+
+      // Play reaction audio
+      this.audio.playReaction(reaction.id);
     }
   }
 
@@ -979,6 +1036,9 @@ export class GameScene extends Phaser.Scene {
     const hpBar = this.add.graphics();
     hpBar.setDepth(ENTITY_DEPTH + 1);
 
+    // Status indicator (colored dots above enemy for active statuses)
+    const statusIndicator = new StatusIndicator(this);
+
     // Entrance scale-pop
     sprite.setScale(scale * 1.5);
     this.tweens.add({
@@ -993,6 +1053,7 @@ export class GameScene extends Phaser.Scene {
       sprite,
       hpBar,
       shadow,
+      statusIndicator,
       maxHp: enemy.hp,
       lastHp: enemy.hp,
       type: enemy.type,
@@ -1000,7 +1061,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateEnemyVisual(ev: EnemyVisual, enemy: EnemyState): void {
-    const { sprite, hpBar, shadow } = ev;
+    const { sprite, hpBar, shadow, statusIndicator } = ev;
     const px = enemy.x * TILE_SIZE + TILE_SIZE / 2;
     const py = enemy.y * TILE_SIZE + TILE_SIZE / 2;
 
@@ -1013,6 +1074,9 @@ export class GameScene extends Phaser.Scene {
 
     // Move shadow
     shadow.setPosition(px, py + 6);
+
+    // Update status indicator dots above enemy
+    statusIndicator.showForEnemy(enemy.instanceId, px, py, enemy.statuses);
 
     // Depth sort (Y)
     const depth = ENTITY_DEPTH + py * 0.001;
@@ -1068,9 +1132,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   private killEnemy(id: string, ev: EnemyVisual): void {
-    const { sprite, hpBar, shadow } = ev;
+    const { sprite, hpBar, shadow, statusIndicator } = ev;
     const x = sprite.x;
     const y = sprite.y;
+
+    // Clean up status indicator
+    statusIndicator.hide();
+    statusIndicator.destroy();
+
+    // Clean up previous status tracking for reaction detection
+    this.previousEnemyStatuses.delete(id);
 
     // Audio
     if (ev.type === 'boss' || ev.type === 'tank') {

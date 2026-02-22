@@ -419,6 +419,7 @@ export class ClassSelectScene extends Phaser.Scene {
       const glow = (card as unknown as { glowBorder: Phaser.GameObjects.Graphics }).glowBorder;
       const cy = (card as unknown as { baseY: number }).baseY;
       overlay.setVisible(false);
+      this.tweens.killTweensOf(glow);
       glow.setVisible(false);
       background.setFillStyle(0x14142a);
       background.setStrokeStyle(2, (card as unknown as { classData: ClassCardData }).classData.color, 0.85);
@@ -431,16 +432,30 @@ export class ClassSelectScene extends Phaser.Scene {
     bg.setFillStyle(0x1c1c38);
     bg.setStrokeStyle(3, (container as unknown as { classData: ClassCardData }).classData.color, 1);
 
-    // Glow border
+    // Glow border — 3 layered strokes for a genuine glow effect
     const cd = (container as unknown as { classData: ClassCardData }).classData;
+    const w = 210 * S;
+    const h = 360 * S;
     glowBorder.clear();
-    glowBorder.lineStyle(6 * S, cd.color, 0.3);
-    glowBorder.strokeRect(-cd.color, -baseY, 100 * S, 100 * S); // placeholder — we draw it properly below
-    glowBorder.clear();
-    const w = 210 * S; const h = 360 * S;
-    glowBorder.lineStyle(5 * S, cd.color, 0.25);
+    glowBorder.lineStyle(12 * S, cd.color, 0.08);
     glowBorder.strokeRect(-w / 2, -h / 2, w, h);
+    glowBorder.lineStyle(8 * S, cd.color, 0.15);
+    glowBorder.strokeRect(-w / 2, -h / 2, w, h);
+    glowBorder.lineStyle(4 * S, cd.color, 0.35);
+    glowBorder.strokeRect(-w / 2, -h / 2, w, h);
+    glowBorder.setBlendMode(Phaser.BlendModes.ADD);
     glowBorder.setVisible(true);
+
+    // Breathing pulse on the glow border
+    this.tweens.killTweensOf(glowBorder);
+    this.tweens.add({
+      targets: glowBorder,
+      alpha: { from: 0.7, to: 1.0 },
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    });
 
     // Lift selected card
     this.tweens.add({
