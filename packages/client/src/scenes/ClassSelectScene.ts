@@ -62,9 +62,22 @@ const CLASS_CARDS: ClassCardData[] = [
   },
 ];
 
+interface CardState {
+  classData: ClassCardData;
+  baseY: number;
+  soldierSprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null;
+  selectedOverlay: Phaser.GameObjects.Graphics;
+  glowBorder: Phaser.GameObjects.Graphics;
+  cardBg: Phaser.GameObjects.Graphics;
+  cardBorder: Phaser.GameObjects.Graphics;
+  width: number;
+  height: number;
+}
+
 export class ClassSelectScene extends Phaser.Scene {
   private selectedClass: ElementType | null = null;
   private cardContainers: Phaser.GameObjects.Container[] = [];
+  private cardStates = new Map<Phaser.GameObjects.Container, CardState>();
   private readyButton!: Phaser.GameObjects.Container;
   private readyText!: Phaser.GameObjects.Text;
   private readyBg!: Phaser.GameObjects.Graphics;
@@ -74,6 +87,10 @@ export class ClassSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.cardContainers = [];
+    this.cardStates.clear();
+    this.selectedClass = null;
+
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
@@ -81,7 +98,6 @@ export class ClassSelectScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#080818');
     this.createStarfield(W, H);
 
-    // Subtle vignette overlay
     const vignette = this.add.graphics();
     vignette.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.6, 0.6, 0.0, 0.0);
     vignette.fillRect(0, 0, W, H / 2);
@@ -101,13 +117,13 @@ export class ClassSelectScene extends Phaser.Scene {
       titleBg.setDepth(1);
     }
 
-    const titleGlow = this.add.text(W / 2, 42 * S, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
+    const titleGlow = this.add.text(W / 2, 42 * S, '\u2694  CHOOSE YOUR ELEMENT  \u2694', {
       fontSize: `${34 * S}px`,
       fontFamily: '"Arial Black", Arial',
       color: '#110800',
     }).setOrigin(0.5).setAlpha(0.45).setDepth(1);
 
-    const title = this.add.text(W / 2, 40 * S, '⚔  CHOOSE YOUR ELEMENT  ⚔', {
+    const title = this.add.text(W / 2, 40 * S, '\u2694  CHOOSE YOUR ELEMENT  \u2694', {
       fontSize: `${34 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
@@ -133,17 +149,25 @@ export class ClassSelectScene extends Phaser.Scene {
       color: '#6677aa',
     }).setOrigin(0.5).setDepth(2);
 
-    // Subtle divider below title (small ribbon accent)
     if (this.textures.exists('ui_ribbon_small')) {
       const ribbon = this.add.image(W / 2, 100 * S, 'ui_ribbon_small');
       ribbon.setDisplaySize(300 * S, 16 * S);
       ribbon.setAlpha(0.35).setDepth(2);
     }
 
+    // ── Particle texture ──────────────────────────────────────────
+    if (!this.textures.exists('_particle_dot')) {
+      const pg = this.make.graphics({ x: 0, y: 0 });
+      pg.fillStyle(0xffffff, 1);
+      pg.fillCircle(4, 4, 4);
+      pg.generateTexture('_particle_dot', 8, 8);
+      pg.destroy();
+    }
+
     // ── Class cards ───────────────────────────────────────────────
-    const cardWidth = 210 * S;
-    const cardHeight = 360 * S;
-    const spacing = 30 * S;
+    const cardWidth = 224 * S;
+    const cardHeight = 350 * S;
+    const spacing = 22 * S;
     const totalWidth = CLASS_CARDS.length * cardWidth + (CLASS_CARDS.length - 1) * spacing;
     const startX = (W - totalWidth) / 2 + cardWidth / 2;
     const cardY = H / 2 + 10 * S;
@@ -157,7 +181,6 @@ export class ClassSelectScene extends Phaser.Scene {
     // ── Ready button ──────────────────────────────────────────────
     this.readyButton = this.createReadyButton(W / 2, H - 52 * S);
 
-    // Fade in
     this.cameras.main.fadeIn(400, 0, 0, 0);
   }
 
@@ -197,193 +220,216 @@ export class ClassSelectScene extends Phaser.Scene {
     y: number,
     width: number,
     height: number,
-    index: number
+    index: number,
   ): Phaser.GameObjects.Container {
     const container = this.add.container(x, y).setDepth(5);
+    const colorHex = '#' + classData.color.toString(16).padStart(6, '0');
+    const headerH = height * 0.40;
+    const cornerR = 12 * S;
 
-    // ── Card background ───────────────────────────────────────────
-    const bg = this.add.rectangle(0, 0, width, height, 0x14142a);
-    bg.setStrokeStyle(2 * S, classData.color, 0.85);
-    bg.setInteractive({ useHandCursor: true });
+    // ── Drop shadow ───────────────────────────────────────────────
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.5);
+    shadow.fillRoundedRect(-width / 2 + 5 * S, -height / 2 + 6 * S, width, height, cornerR);
 
-    // ── Image viewport (upper portion of card) ────────────────────
-    const viewH = 150 * S;
-    const viewBg = this.add.rectangle(0, -height / 2 + viewH / 2, width, viewH, 0x0a0a1a);
+    // ── Card background (rounded rect) ────────────────────────────
+    const cardBg = this.add.graphics();
+    this.drawCardFill(cardBg, width, height, cornerR, 0x10102a, 0.95);
 
-    // ── Building image (top-center of view area, behind soldier) ─
-    const buildingY = -height / 2 + viewH / 2;
-    let buildingObj: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
-    if (this.textures.exists(classData.buildingKey)) {
-      buildingObj = this.add.image(0, buildingY, classData.buildingKey);
-      (buildingObj as Phaser.GameObjects.Image).setScale(0.28 * S);
-      (buildingObj as Phaser.GameObjects.Image).setOrigin(0.5, 0.5);
-      (buildingObj as Phaser.GameObjects.Image).setTint(
-        Phaser.Display.Color.IntegerToColor(classData.color)
-          .lighten(80).color
-      );
-    } else {
-      buildingObj = this.add.rectangle(0, buildingY, 60 * S, 80 * S, classData.color, 0.4);
-    }
+    // ── Gradient header wash ──────────────────────────────────────
+    const headerGfx = this.add.graphics();
+    const inset = 4 * S;
+    headerGfx.fillGradientStyle(
+      classData.color, classData.color,
+      classData.color, classData.color,
+      0.18, 0.18, 0.0, 0.0,
+    );
+    headerGfx.fillRect(-width / 2 + inset, -height / 2 + inset, width - inset * 2, headerH);
 
-    // ── Soldier sprite (in front of building, lower in view) ─────
-    const soldierY = -height / 2 + viewH - 40 * S;
+    // ── Card border ───────────────────────────────────────────────
+    const cardBorder = this.add.graphics();
+    cardBorder.lineStyle(1.5 * S, classData.color, 0.35);
+    cardBorder.strokeRoundedRect(-width / 2, -height / 2, width, height, cornerR);
+
+    // ── Soldier glow + sprite ─────────────────────────────────────
+    const soldierY = -height / 2 + headerH / 2 + 5 * S;
+    let soldierGlow: Phaser.GameObjects.Graphics | null = null;
     let soldierSprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null = null;
+
     if (this.textures.exists(classData.soldierKey)) {
-      soldierSprite = this.add.sprite(-4 * S, soldierY, classData.soldierKey, 0);
+      soldierGlow = this.add.graphics();
+      soldierGlow.fillStyle(classData.color, 0.06);
+      soldierGlow.fillCircle(0, soldierY, 55 * S);
+      soldierGlow.fillStyle(classData.color, 0.04);
+      soldierGlow.fillCircle(0, soldierY, 38 * S);
+
+      soldierSprite = this.add.sprite(0, soldierY, classData.soldierKey, 0);
       const isLancer = classData.soldierKey.includes('ice');
-      soldierSprite.setScale((isLancer ? 0.45 : 0.7) * S);
+      soldierSprite.setScale((isLancer ? 0.55 : 0.85) * S);
       const idleAnim = `${classData.soldierKey}_idle`;
-      if (this.anims.exists(idleAnim)) {
-        soldierSprite.play(idleAnim);
-      }
+      if (this.anims.exists(idleAnim)) soldierSprite.play(idleAnim);
     } else {
-      soldierSprite = this.add.circle(-4 * S, soldierY, 14 * S, classData.color);
+      soldierSprite = this.add.circle(0, soldierY, 18 * S, classData.color);
     }
 
-    // ── Element badge (corner pill) ───────────────────────────────
-    const badgeBg = this.add.graphics();
-    badgeBg.fillStyle(classData.color, 0.9);
-    badgeBg.fillRoundedRect(width / 2 - 46 * S, -height / 2 + 6 * S, 40 * S, 22 * S, 6 * S);
-    const badgeText = this.add.text(width / 2 - 26 * S, -height / 2 + 10 * S, classData.icon, {
-      fontSize: `${14 * S}px`,
-    }).setOrigin(0.5, 0);
+    // ── Element icon circle (at header/body boundary) ─────────────
+    const iconY = -height / 2 + headerH;
+    const iconGfx = this.add.graphics();
+    // Soft outer glow
+    iconGfx.fillStyle(classData.color, 0.1);
+    iconGfx.fillCircle(0, iconY, 28 * S);
+    // Dark disc
+    iconGfx.fillStyle(0x0c0c22, 1);
+    iconGfx.fillCircle(0, iconY, 20 * S);
+    // Colored ring
+    iconGfx.lineStyle(2 * S, classData.color, 0.85);
+    iconGfx.strokeCircle(0, iconY, 20 * S);
 
-    // ── Divider ───────────────────────────────────────────────────
-    const dividerY = -height / 2 + viewH + S;
-    const divider = this.add.graphics();
-    divider.lineStyle(S, classData.color, 0.5);
-    divider.lineBetween(-width / 2 + 10 * S, dividerY, width / 2 - 10 * S, dividerY);
+    const iconText = this.add.text(0, iconY, classData.icon, {
+      fontSize: `${16 * S}px`,
+    }).setOrigin(0.5);
 
     // ── Class name ────────────────────────────────────────────────
-    const nameY = -height / 2 + viewH + 22 * S;
-    const name = this.add.text(0, nameY, classData.name, {
-      fontSize: `${20 * S}px`,
+    const nameY = iconY + 30 * S;
+    const nameText = this.add.text(0, nameY, classData.name, {
+      fontSize: `${21 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
       color: '#ffffff',
       stroke: '#000000',
-      strokeThickness: 2 * S,
-    }).setOrigin(0.5, 0);
+      strokeThickness: 3 * S,
+    }).setOrigin(0.5);
 
-    // ── Element type pill ─────────────────────────────────────────
-    const elementPillY = nameY + 28 * S;
-    const pillBg = this.add.graphics();
-    pillBg.fillStyle(classData.color, 0.18);
-    pillBg.lineStyle(S, classData.color, 0.6);
-    pillBg.fillRoundedRect(-38 * S, elementPillY - S, 76 * S, 18 * S, 9 * S);
-    pillBg.strokeRoundedRect(-38 * S, elementPillY - S, 76 * S, 18 * S, 9 * S);
-    const elementLabel = this.add.text(0, elementPillY + S, classData.element.toUpperCase(), {
-      fontSize: `${11 * S}px`,
+    // ── Element type with decorative dashes ───────────────────────
+    const elemY = nameY + 28 * S;
+    const elemText = this.add.text(0, elemY, `\u2500\u2500 ${classData.element.toUpperCase()} \u2500\u2500`, {
+      fontSize: `${9 * S}px`,
       fontFamily: 'Arial',
-      color: '#' + classData.color.toString(16).padStart(6, '0'),
       fontStyle: 'bold',
-    }).setOrigin(0.5, 0);
+      color: colorHex,
+      letterSpacing: 3 * S,
+    }).setOrigin(0.5);
 
     // ── Description ───────────────────────────────────────────────
-    const descY = elementPillY + 26 * S;
-    const description = this.add.text(0, descY, classData.description, {
-      fontSize: `${12 * S}px`,
+    const descY = elemY + 20 * S;
+    const descText = this.add.text(0, descY, classData.description, {
+      fontSize: `${11 * S}px`,
       fontFamily: 'Arial',
-      color: '#9999bb',
-      wordWrap: { width: width - 28 * S },
+      color: '#8899bb',
+      wordWrap: { width: width - 30 * S },
       align: 'center',
+      lineSpacing: 2 * S,
     }).setOrigin(0.5, 0);
 
-    // ── Passive label ─────────────────────────────────────────────
-    const passiveY = descY + description.height + 8 * S;
-    const passivePillBg = this.add.graphics();
-    passivePillBg.fillStyle(0x222244, 1);
-    passivePillBg.lineStyle(S, classData.color, 0.4);
-    passivePillBg.fillRoundedRect(-width / 2 + 12 * S, passiveY - 2 * S, width - 24 * S, 20 * S, 5 * S);
-    passivePillBg.strokeRoundedRect(-width / 2 + 12 * S, passiveY - 2 * S, width - 24 * S, 20 * S, 5 * S);
-    const passiveText = this.add.text(-width / 2 + 20 * S, passiveY + S, `PASSIVE: ${classData.passive}`, {
-      fontSize: `${10 * S}px`,
-      fontFamily: 'Arial',
-      color: '#' + classData.color.toString(16).padStart(6, '0'),
-    }).setOrigin(0, 0);
-
-    // ── Tower list ────────────────────────────────────────────────
-    const towerSectionY = height / 2 - 70 * S;
+    // ── Tower section ─────────────────────────────────────────────
+    const towerY = height / 2 - 76 * S;
     const towerDivider = this.add.graphics();
-    towerDivider.lineStyle(S, 0x333355, 1);
-    towerDivider.lineBetween(-width / 2 + 10 * S, towerSectionY - 4 * S, width / 2 - 10 * S, towerSectionY - 4 * S);
-
-    const towersLabel = this.add.text(0, towerSectionY, 'TOWERS', {
-      fontSize: `${10 * S}px`,
-      fontFamily: 'Arial',
-      color: '#555577',
-      fontStyle: 'bold',
-    }).setOrigin(0.5, 0);
+    towerDivider.lineStyle(S * 0.5, classData.color, 0.2);
+    towerDivider.lineBetween(-width / 2 + 18 * S, towerY - 8 * S, width / 2 - 18 * S, towerY - 8 * S);
 
     const towerTexts = classData.towers.map((tower, ti) =>
-      this.add.text(0, towerSectionY + 14 * S + ti * 16 * S, `\u2022 ${tower}`, {
-        fontSize: `${11 * S}px`,
+      this.add.text(0, towerY + ti * 15 * S, `\u25B8 ${tower}`, {
+        fontSize: `${10 * S}px`,
         fontFamily: 'Arial',
-        color: '#' + classData.color.toString(16).padStart(6, '0'),
-      }).setOrigin(0.5, 0).setAlpha(0.9)
+        color: colorHex,
+      }).setOrigin(0.5, 0).setAlpha(0.8),
     );
 
-    // ── Selection overlay ─────────────────────────────────────────
-    const selectedOverlay = this.add.rectangle(0, 0, width, height, classData.color, 0.15);
+    // ── Passive at bottom ─────────────────────────────────────────
+    const passiveY = height / 2 - 24 * S;
+    const passiveBg = this.add.graphics();
+    passiveBg.fillStyle(classData.color, 0.08);
+    passiveBg.fillRoundedRect(-width / 2 + 10 * S, passiveY - 4 * S, width - 20 * S, 18 * S, 4 * S);
+
+    const passiveText = this.add.text(0, passiveY, `${classData.icon} ${classData.passive}`, {
+      fontSize: `${9 * S}px`,
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+      color: colorHex,
+    }).setOrigin(0.5, 0).setAlpha(0.7);
+
+    // ── Ambient particles ─────────────────────────────────────────
+    const particles = this.add.particles(0, 0, '_particle_dot', {
+      x: { min: -width / 2 + 10 * S, max: width / 2 - 10 * S },
+      y: { min: height / 2 - 20 * S, max: height / 2 },
+      speed: { min: 4 * S, max: 12 * S },
+      angle: { min: -100, max: -80 },
+      lifespan: { min: 2500, max: 4500 },
+      alpha: { start: 0.25, end: 0 },
+      scale: { start: 0.4 * S, end: 0 },
+      tint: classData.color,
+      frequency: 800,
+      quantity: 1,
+      blendMode: Phaser.BlendModes.ADD,
+    });
+
+    // ── Selection overlay + glow border ───────────────────────────
+    const selectedOverlay = this.add.graphics();
     selectedOverlay.setVisible(false);
 
-    // Glow border when selected
     const glowBorder = this.add.graphics();
     glowBorder.setVisible(false);
 
-    // ── Add all children to container ─────────────────────────────
+    // ── Hit area (must be on top for pointer events) ──────────────
+    const hitArea = this.add.rectangle(0, 0, width, height, 0x000000, 0);
+    hitArea.setInteractive({ useHandCursor: true });
+
+    // ── Assemble children ─────────────────────────────────────────
     const children: Phaser.GameObjects.GameObject[] = [
-      bg, viewBg,
-      buildingObj,
-      badgeBg, badgeText,
-      divider,
-      name,
-      pillBg, elementLabel,
-      description,
-      passivePillBg, passiveText,
-      towerDivider, towersLabel,
-      ...towerTexts,
-      selectedOverlay, glowBorder,
+      shadow, cardBg, headerGfx,
     ];
-    if (soldierSprite) children.splice(3, 0, soldierSprite);
+    if (soldierGlow) children.push(soldierGlow);
+    if (soldierSprite) children.push(soldierSprite);
+    children.push(
+      cardBorder,
+      iconGfx, iconText,
+      nameText, elemText,
+      descText,
+      towerDivider, ...towerTexts,
+      passiveBg, passiveText,
+      particles,
+      selectedOverlay, glowBorder,
+      hitArea,
+    );
     container.add(children);
 
     // ── Interactivity ─────────────────────────────────────────────
-    bg.on('pointerover', () => {
+    hitArea.on('pointerover', () => {
       if (this.selectedClass !== classData.element) {
-        bg.setFillStyle(0x1e1e38);
-        this.tweens.add({
-          targets: container,
-          y: y - 8,
-          duration: 150,
-          ease: 'Power2.Out',
-        });
+        this.drawCardFill(cardBg, width, height, cornerR, 0x181838, 0.95);
+        cardBorder.clear();
+        cardBorder.lineStyle(1.5 * S, classData.color, 0.55);
+        cardBorder.strokeRoundedRect(-width / 2, -height / 2, width, height, cornerR);
+        this.tweens.add({ targets: container, y: y - 8, duration: 150, ease: 'Power2.Out' });
       }
     });
 
-    bg.on('pointerout', () => {
+    hitArea.on('pointerout', () => {
       if (this.selectedClass !== classData.element) {
-        bg.setFillStyle(0x14142a);
-        this.tweens.add({
-          targets: container,
-          y,
-          duration: 150,
-          ease: 'Power2.Out',
-        });
+        this.drawCardFill(cardBg, width, height, cornerR, 0x10102a, 0.95);
+        cardBorder.clear();
+        cardBorder.lineStyle(1.5 * S, classData.color, 0.35);
+        cardBorder.strokeRoundedRect(-width / 2, -height / 2, width, height, cornerR);
+        this.tweens.add({ targets: container, y, duration: 150, ease: 'Power2.Out' });
       }
     });
 
-    bg.on('pointerdown', () => {
-      this.selectClass(classData.element, container, selectedOverlay, bg, glowBorder, y);
+    hitArea.on('pointerdown', () => {
+      this.selectClass(classData.element, container);
     });
 
-    // ── Store refs ────────────────────────────────────────────────
-    (container as unknown as { backgroundRect: Phaser.GameObjects.Rectangle }).backgroundRect = bg;
-    (container as unknown as { selectedOverlay: Phaser.GameObjects.Rectangle }).selectedOverlay = selectedOverlay;
-    (container as unknown as { glowBorder: Phaser.GameObjects.Graphics }).glowBorder = glowBorder;
-    (container as unknown as { classData: ClassCardData }).classData = classData;
-    (container as unknown as { baseY: number }).baseY = y;
-    (container as unknown as { soldierSprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null }).soldierSprite = soldierSprite;
+    // ── Store card state ──────────────────────────────────────────
+    this.cardStates.set(container, {
+      classData,
+      baseY: y,
+      soldierSprite,
+      selectedOverlay,
+      glowBorder,
+      cardBg,
+      cardBorder,
+      width,
+      height,
+    });
 
     // ── Staggered entrance ────────────────────────────────────────
     container.setAlpha(0);
@@ -392,64 +438,84 @@ export class ClassSelectScene extends Phaser.Scene {
       targets: container,
       alpha: 1,
       y,
-      delay: index * 100,
-      duration: 450,
+      delay: index * 120,
+      duration: 500,
       ease: 'Back.Out',
     });
 
     return container;
   }
 
+  private drawCardFill(
+    gfx: Phaser.GameObjects.Graphics,
+    w: number,
+    h: number,
+    r: number,
+    color: number,
+    alpha: number,
+  ): void {
+    gfx.clear();
+    gfx.fillStyle(color, alpha);
+    gfx.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // Selection
   // ─────────────────────────────────────────────────────────────────
 
-  private selectClass(
-    element: ElementType,
-    container: Phaser.GameObjects.Container,
-    selectedOverlay: Phaser.GameObjects.Rectangle,
-    bg: Phaser.GameObjects.Rectangle,
-    glowBorder: Phaser.GameObjects.Graphics,
-    baseY: number
-  ): void {
-    // Deselect all
+  private selectClass(element: ElementType, container: Phaser.GameObjects.Container): void {
+    const cornerR = 12 * S;
+
+    // Deselect all cards
     this.cardContainers.forEach((card) => {
-      const overlay = (card as unknown as { selectedOverlay: Phaser.GameObjects.Rectangle }).selectedOverlay;
-      const background = (card as unknown as { backgroundRect: Phaser.GameObjects.Rectangle }).backgroundRect;
-      const glow = (card as unknown as { glowBorder: Phaser.GameObjects.Graphics }).glowBorder;
-      const cy = (card as unknown as { baseY: number }).baseY;
-      overlay.setVisible(false);
-      this.tweens.killTweensOf(glow);
-      glow.setVisible(false);
-      background.setFillStyle(0x14142a);
-      background.setStrokeStyle(2, (card as unknown as { classData: ClassCardData }).classData.color, 0.85);
-      this.tweens.add({ targets: card, y: cy, duration: 150, ease: 'Power2.Out' });
+      const st = this.cardStates.get(card);
+      if (!st) return;
+      st.selectedOverlay.clear();
+      st.selectedOverlay.setVisible(false);
+      this.tweens.killTweensOf(st.glowBorder);
+      st.glowBorder.clear();
+      st.glowBorder.setVisible(false);
+      this.drawCardFill(st.cardBg, st.width, st.height, cornerR, 0x10102a, 0.95);
+      st.cardBorder.clear();
+      st.cardBorder.lineStyle(1.5 * S, st.classData.color, 0.35);
+      st.cardBorder.strokeRoundedRect(-st.width / 2, -st.height / 2, st.width, st.height, cornerR);
+      this.tweens.add({ targets: card, y: st.baseY, duration: 150, ease: 'Power2.Out' });
     });
 
     // Select this card
     this.selectedClass = element;
-    selectedOverlay.setVisible(true);
-    bg.setFillStyle(0x1c1c38);
-    bg.setStrokeStyle(3, (container as unknown as { classData: ClassCardData }).classData.color, 1);
+    const st = this.cardStates.get(container);
+    if (!st) return;
 
-    // Glow border — 3 layered strokes for a genuine glow effect
-    const cd = (container as unknown as { classData: ClassCardData }).classData;
-    const w = 210 * S;
-    const h = 360 * S;
-    glowBorder.clear();
-    glowBorder.lineStyle(12 * S, cd.color, 0.08);
-    glowBorder.strokeRect(-w / 2, -h / 2, w, h);
-    glowBorder.lineStyle(8 * S, cd.color, 0.15);
-    glowBorder.strokeRect(-w / 2, -h / 2, w, h);
-    glowBorder.lineStyle(4 * S, cd.color, 0.35);
-    glowBorder.strokeRect(-w / 2, -h / 2, w, h);
-    glowBorder.setBlendMode(Phaser.BlendModes.ADD);
-    glowBorder.setVisible(true);
+    // Color wash overlay
+    st.selectedOverlay.clear();
+    st.selectedOverlay.fillStyle(st.classData.color, 0.07);
+    st.selectedOverlay.fillRoundedRect(-st.width / 2, -st.height / 2, st.width, st.height, cornerR);
+    st.selectedOverlay.setVisible(true);
 
-    // Breathing pulse on the glow border
-    this.tweens.killTweensOf(glowBorder);
+    // Brighten card
+    this.drawCardFill(st.cardBg, st.width, st.height, cornerR, 0x181838, 0.95);
+
+    // Bright border
+    st.cardBorder.clear();
+    st.cardBorder.lineStyle(2 * S, st.classData.color, 0.9);
+    st.cardBorder.strokeRoundedRect(-st.width / 2, -st.height / 2, st.width, st.height, cornerR);
+
+    // Layered glow border
+    st.glowBorder.clear();
+    st.glowBorder.lineStyle(10 * S, st.classData.color, 0.08);
+    st.glowBorder.strokeRoundedRect(-st.width / 2, -st.height / 2, st.width, st.height, cornerR);
+    st.glowBorder.lineStyle(6 * S, st.classData.color, 0.18);
+    st.glowBorder.strokeRoundedRect(-st.width / 2, -st.height / 2, st.width, st.height, cornerR);
+    st.glowBorder.lineStyle(3 * S, st.classData.color, 0.4);
+    st.glowBorder.strokeRoundedRect(-st.width / 2, -st.height / 2, st.width, st.height, cornerR);
+    st.glowBorder.setBlendMode(Phaser.BlendModes.ADD);
+    st.glowBorder.setVisible(true);
+
+    // Breathing pulse
+    this.tweens.killTweensOf(st.glowBorder);
     this.tweens.add({
-      targets: glowBorder,
+      targets: st.glowBorder,
       alpha: { from: 0.7, to: 1.0 },
       duration: 1200,
       yoyo: true,
@@ -457,28 +523,26 @@ export class ClassSelectScene extends Phaser.Scene {
       ease: 'Sine.InOut',
     });
 
-    // Lift selected card
+    // Lift card
     this.tweens.add({
       targets: container,
-      y: baseY - 12,
+      y: st.baseY - 12,
       duration: 200,
       ease: 'Back.Out',
     });
 
-    // Pulse selected soldier
-    const soldier = (container as unknown as { soldierSprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null }).soldierSprite;
-    if (soldier) {
+    // Pulse soldier
+    if (st.soldierSprite && st.soldierSprite instanceof Phaser.GameObjects.Sprite) {
       this.tweens.add({
-        targets: soldier,
-        scaleX: (soldier as Phaser.GameObjects.Sprite).scaleX * 1.2,
-        scaleY: (soldier as Phaser.GameObjects.Sprite).scaleY * 1.2,
+        targets: st.soldierSprite,
+        scaleX: st.soldierSprite.scaleX * 1.15,
+        scaleY: st.soldierSprite.scaleY * 1.15,
         duration: 120,
         yoyo: true,
         ease: 'Power2.Out',
       });
     }
 
-    // Unlock ready button
     this.enableReadyButton();
   }
 
@@ -488,30 +552,42 @@ export class ClassSelectScene extends Phaser.Scene {
 
   private createReadyButton(x: number, y: number): Phaser.GameObjects.Container {
     const container = this.add.container(x, y).setDepth(10);
-    const btnW = 240 * S;
-    const btnH = 52 * S;
-    const r = 10 * S;
+    const btnW = 260 * S;
+    const btnH = 54 * S;
+    const r = 12 * S;
 
     const bg = this.add.graphics();
     const drawBtn = (state: 'disabled' | 'normal' | 'hover' | 'pressed') => {
       bg.clear();
       // Shadow
-      bg.fillStyle(0x000000, 0.3);
-      bg.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + 3 * S, btnW, btnH, r);
+      bg.fillStyle(0x000000, 0.35);
+      bg.fillRoundedRect(-btnW / 2 + 3 * S, -btnH / 2 + 4 * S, btnW, btnH, r);
       // Body
-      const fills: Record<string, number> = { disabled: 0x1a2233, normal: 0x004d28, hover: 0x006633, pressed: 0x003d1a };
+      const fills: Record<string, number> = {
+        disabled: 0x1a2233,
+        normal: 0x006633,
+        hover: 0x008844,
+        pressed: 0x005528,
+      };
       bg.fillStyle(fills[state] ?? 0x1a2233, 1);
       bg.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
       // Top highlight
       if (state !== 'disabled') {
-        bg.fillStyle(0xffffff, state === 'hover' ? 0.12 : 0.06);
-        bg.fillRoundedRect(-btnW / 2 + 2 * S, -btnH / 2 + S, btnW - 4 * S, btnH / 2 - 2 * S, { tl: 8 * S, tr: 8 * S, bl: 0, br: 0 });
+        bg.fillStyle(0xffffff, state === 'hover' ? 0.15 : 0.08);
+        bg.fillRoundedRect(
+          -btnW / 2 + 2 * S, -btnH / 2 + S,
+          btnW - 4 * S, btnH / 2 - 2 * S,
+          { tl: 10 * S, tr: 10 * S, bl: 0, br: 0 },
+        );
       }
       // Border
       const borders: Record<string, [number, number]> = {
-        disabled: [0x334455, 0.5], normal: [0x00cc66, 0.8], hover: [0x00ff88, 1], pressed: [0x00aa55, 1],
+        disabled: [0x334455, 0.4],
+        normal: [0x00cc66, 0.85],
+        hover: [0x00ff88, 1],
+        pressed: [0x00aa55, 1],
       };
-      const [bc, ba] = borders[state] ?? [0x334455, 0.5];
+      const [bc, ba] = borders[state] ?? [0x334455, 0.4];
       bg.lineStyle(2 * S, bc, ba);
       bg.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, r);
     };
@@ -522,22 +598,20 @@ export class ClassSelectScene extends Phaser.Scene {
       fontSize: `${18 * S}px`,
       fontFamily: '"Arial Black", Arial',
       fontStyle: 'bold',
-      color: '#556677',
+      color: '#445566',
       stroke: '#000000',
       strokeThickness: 2 * S,
     }).setOrigin(0.5);
 
     const hit = this.add.rectangle(0, 0, btnW, btnH, 0x000000, 0)
       .setInteractive({ useHandCursor: false });
-    (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
-    (container as unknown as { drawBtn: typeof drawBtn }).drawBtn = drawBtn;
 
     hit.on('pointerover', () => { if (this.selectedClass) drawBtn('hover'); });
     hit.on('pointerout', () => { if (this.selectedClass) drawBtn('normal'); });
     hit.on('pointerdown', () => {
       if (!this.selectedClass) return;
       drawBtn('pressed');
-      this.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 60, yoyo: true });
+      this.tweens.add({ targets: container, scaleX: 0.96, scaleY: 0.96, duration: 60, yoyo: true });
     });
     hit.on('pointerup', () => {
       if (this.selectedClass) {
@@ -545,6 +619,9 @@ export class ClassSelectScene extends Phaser.Scene {
         this.emitReadyUp();
       }
     });
+
+    (container as unknown as { drawBtn: typeof drawBtn }).drawBtn = drawBtn;
+    (container as unknown as { hit: Phaser.GameObjects.Rectangle }).hit = hit;
 
     container.add([bg, this.readyText, hit]);
     return container;
@@ -554,13 +631,12 @@ export class ClassSelectScene extends Phaser.Scene {
     const hit = (this.readyButton as unknown as { hit: Phaser.GameObjects.Rectangle }).hit;
     hit.setInteractive({ useHandCursor: true });
 
-    this.readyText.setText('⚔  READY  ⚔');
+    this.readyText.setText('\u2694  READY  \u2694');
     this.readyText.setColor('#ffffff');
 
     const drawBtn = (this.readyButton as unknown as { drawBtn: (s: string) => void }).drawBtn;
     if (drawBtn) drawBtn('normal');
 
-    // Pulse to draw attention
     this.tweens.add({
       targets: this.readyButton,
       scaleX: 1.06,
@@ -571,6 +647,10 @@ export class ClassSelectScene extends Phaser.Scene {
       ease: 'Sine.InOut',
     });
   }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Game flow
+  // ─────────────────────────────────────────────────────────────────
 
   private async emitReadyUp(): Promise<void> {
     if (!this.selectedClass) return;

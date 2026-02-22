@@ -94,7 +94,7 @@ export class LobbyScene extends Phaser.Scene {
       bg.strokeCircle(0, 0, 32 * S);
 
       const iconText = this.add.text(0, -6 * S, el.icon, { fontSize: `${26 * S}px` }).setOrigin(0.5);
-      const nameText = this.add.text(0, 22 * S, el.name, { fontSize: `${11 * S}px`, fontFamily: 'Arial', color: el.color }).setOrigin(0.5);
+      const nameText = this.add.text(0, 42 * S, el.name, { fontSize: `${11 * S}px`, fontFamily: 'Arial', color: el.color, stroke: '#000000', strokeThickness: 2 * S }).setOrigin(0.5);
 
       badgeContainer.add([bg, iconText, nameText]);
 
@@ -117,11 +117,14 @@ export class LobbyScene extends Phaser.Scene {
       table.setAlpha(0.75);
     }
 
-    this.add.text(W / 2, H * 0.49, 'PLAYER NAME', {
-      fontSize: `${13 * S}px`,
+    this.add.text(W / 2, H * 0.465, 'PLAYER NAME', {
+      fontSize: `${14 * S}px`,
       fontFamily: '"Arial Black", Arial',
-      color: '#7788aa',
+      color: '#e8eef5',
       letterSpacing: 4 * S,
+      stroke: '#0a1020',
+      strokeThickness: 4 * S,
+      shadow: { offsetX: 0, offsetY: 2 * S, color: '#000000', blur: 4 * S, fill: true },
     }).setOrigin(0.5);
 
     const inputBg = this.add.graphics();
@@ -193,6 +196,11 @@ export class LobbyScene extends Phaser.Scene {
     this.add.text(W - 16 * S, H - 16 * S, 'v0.1.0  ·  Element Defense', {
       fontSize: `${12 * S}px`, fontFamily: 'Arial', color: '#334455',
     }).setOrigin(1, 1);
+
+    // ── Cleanup HTML input on scene shutdown ────────────────────
+    this.events.on('shutdown', () => {
+      document.getElementById('player-name-input')?.remove();
+    });
 
     // ── Fade in ───────────────────────────────────────────────────
     this.cameras.main.fadeIn(500, 0, 0, 0);
