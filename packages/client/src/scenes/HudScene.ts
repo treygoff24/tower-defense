@@ -149,6 +149,15 @@ export class HudScene extends Phaser.Scene {
         .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16).setScrollFactor(0).setDepth(101);
     }
 
+    // ── Version display (top-right corner) ────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-undef
+    const versionText = 'v' + __VERSION__;
+    this.add.text(W - 14, 74, versionText, {
+      fontSize: '11px',
+      fontFamily: 'Arial',
+      color: '#666688',
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(101);
+
     // ── Class icon (bottom-left) ───────────────────────────────────
     this.classIcon = this.createClassIcon(70, H - 70);
     this.classIcon.setScrollFactor(0).setDepth(101);
