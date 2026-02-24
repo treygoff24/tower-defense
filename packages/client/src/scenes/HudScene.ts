@@ -45,11 +45,13 @@ export class HudScene extends Phaser.Scene {
   private sellPanel: Phaser.GameObjects.Container | null = null;
   private towerInspectorInst: TowerInspector | null = null;
   private inspectorBackdrop: Phaser.GameObjects.Rectangle | null = null;
+  private shopOpen: boolean = false;
+  private shopButton: Phaser.GameObjects.Text | null = null;
+  private shopBackdrop: Phaser.GameObjects.Rectangle | null = null;
   private targetingModes: Map<string, TargetingMode> = new Map();
   private hudGold = 0;
   private wavePreviewContainer: Phaser.GameObjects.Container | null = null;
   private currentWaveNum: number = 0;
-  private wavePreviewEscKey: Phaser.Input.Keyboard.Key | null = null;
 
   /* Tracking for polish features */
   private lastWaveText = '';
@@ -90,14 +92,8 @@ export class HudScene extends Phaser.Scene {
   create(): void {
     this.createHudElements();
     this.setupChatSystem();
-    this.setupWavePreviewKeyboard();
+    this.setupGlobalEscHandler();
   }
-
-  private handleWavePreviewEsc = (): void => {
-    if (this.wavePreviewContainer) {
-      this.toggleWavePreview();
-    }
-  };
 
   private createHudElements(): void {
     const W = this.cameras.main.width;
@@ -182,6 +178,25 @@ export class HudScene extends Phaser.Scene {
     // ── Class icon (bottom-left) ───────────────────────────────────
     this.classIcon = this.createClassIcon(70, H - 70);
     this.classIcon.setScrollFactor(0).setDepth(101);
+
+    // ── Shop button (bottom-left area) ─────────────────────────
+    this.shopButton = this.add.text(130, H - 72, '🛒 Shop', {
+      fontSize: '16px',
+      fontFamily: 'Arial',
+      color: '#e6ecff',
+      backgroundColor: '#0f1330',
+      padding: { x: 8, y: 4 },
+    }).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
+
+    this.shopButton.on('pointerover', () => this.shopButton?.setColor('#ffffff'));
+    this.shopButton.on('pointerout', () => this.shopButton?.setColor('#e6ecff'));
+    this.shopButton.on('pointerdown', () => {
+      if (this.shopOpen) {
+        this.closeShop();
+      } else {
+        this.openShop();
+      }
+    });
 
     // ── Start Wave button (center-bottom) ─────────────────────────
     this.startWaveButton = this.createStartWaveButton(W / 2, H - 60);
@@ -590,12 +605,61 @@ export class HudScene extends Phaser.Scene {
     });
   }
 
-  private setupWavePreviewKeyboard(): void {
+  private setupGlobalEscHandler(): void {
     if (!this.input.keyboard) return;
+    const escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    escKey.on('down', this.handleEsc);
+  }
 
-    if (!this.wavePreviewEscKey) {
-      this.wavePreviewEscKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-      this.wavePreviewEscKey.on('down', this.handleWavePreviewEsc);
+  private handleEsc = (): void => {
+    if (this.wavePreviewContainer) {
+      this.toggleWavePreview();
+      return;
+    }
+
+    if (this.shopOpen) {
+      this.closeShop();
+      return;
+    }
+
+    const gameScene = this.scene.get('GameScene');
+    gameScene?.events.emit('tower-deselected');
+  };
+
+  private openShop(): void {
+    if (!this.towerPanel) return;
+    if (this.shopOpen) return;
+
+    this.shopOpen = true;
+    this.towerPanel.getContainer().setVisible(true);
+
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
+    if (this.shopBackdrop) {
+      this.shopBackdrop.setPosition(W / 2, H / 2);
+      this.shopBackdrop.setDisplaySize(W, H);
+      this.shopBackdrop.setVisible(true);
+      this.shopBackdrop.setInteractive();
+      return;
+    }
+
+    this.shopBackdrop = this.add
+      .rectangle(W / 2, H / 2, W, H, 0x000000, 0.4)
+      .setScrollFactor(0)
+      .setDepth(100)
+      .setInteractive({ useHandCursor: false })
+      .setVisible(true);
+
+    this.shopBackdrop.on('pointerdown', () => this.closeShop());
+  }
+
+  private closeShop(): void {
+    this.shopOpen = false;
+    this.towerPanel?.getContainer().setVisible(false);
+
+    if (this.shopBackdrop) {
+      this.shopBackdrop.destroy();
+      this.shopBackdrop = null;
     }
   }
 
@@ -760,6 +824,8 @@ export class HudScene extends Phaser.Scene {
   }
 
   private showTowerPanelForClass(elementClass: ElementType): void {
+    this.closeShop();
+
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
@@ -779,12 +845,13 @@ export class HudScene extends Phaser.Scene {
     const panelX = W - 150;  // 280px wide panel, centered 150px from right
     const panelY = H / 2;
     this.towerPanel = new TowerPanel(this, panelX, panelY);
-    this.towerPanel.getContainer().setScrollFactor(0).setDepth(101);
+    this.towerPanel.getContainer().setScrollFactor(0).setDepth(101).setVisible(false);
     this.towerPanel.setGold(this.hudGold > 0 ? this.hudGold : 999);
     this.towerPanel.setTowerConfigs(classTowers);
 
     // Wire up selection → GameScene event
     this.towerPanel.setSelectionCallback((configId) => {
+      this.closeShop();
       const gameScene = this.scene.get('GameScene');
       const gameClient = this.registry.get('gameClient') as GameClient;
       if (gameScene) {
