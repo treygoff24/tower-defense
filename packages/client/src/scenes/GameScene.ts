@@ -82,6 +82,7 @@ export class GameScene extends Phaser.Scene {
   private mapHeight = 0;
   private currentPhase: GamePhase = 'prep';
   private selectedTowerId: string | null = null;
+  private defaultZoom: number = 1;
 
   // ── Timing ────────────────────────────────────────────────────────
   private cloudTimer = 0;
@@ -120,7 +121,23 @@ export class GameScene extends Phaser.Scene {
     // Input
     this.input.mouse?.disableContextMenu(); // Allow right-click for ping
     this.input.on('pointermove', this.handleMouseMove, this);
+    this.input.on(
+      'pointermove',
+      (ptr: Phaser.Input.Pointer) => {
+        if (ptr.isDown && ptr.button === 0 && this.cameras.main.zoom > 1.1 && !this.selectedTowerId) {
+          this.cameras.main.scrollX -= (ptr.x - ptr.prevPosition.x) / this.cameras.main.zoom;
+          this.cameras.main.scrollY -= (ptr.y - ptr.prevPosition.y) / this.cameras.main.zoom;
+        }
+      }
+    );
     this.input.on('pointerup', this.handleTileClick, this);
+    this.input.on('wheel', (_ptr: Phaser.Input.Pointer, _objs: unknown[], _dx: number, dy: number) => {
+      this.adjustZoom(dy > 0 ? -0.1 : 0.1);
+    });
+    this.input.keyboard?.on('keydown-EQUAL', () => this.adjustZoom(0.15));
+    this.input.keyboard?.on('keydown-MINUS', () => this.adjustZoom(-0.15));
+    this.input.keyboard?.on('keydown-NUMPAD_ADD', () => this.adjustZoom(0.15));
+    this.input.keyboard?.on('keydown-NUMPAD_SUBTRACT', () => this.adjustZoom(-0.15));
     this.input.setDefaultCursor('auto');
 
     // Events from HUD / network
@@ -131,6 +148,9 @@ export class GameScene extends Phaser.Scene {
     this.events.on('enemy-killed', this.handleEnemyKilled, this);
     this.events.on('base-damaged', this.handleBaseDamaged, this);
     this.events.on('tower-sold-visual', this.handleTowerSoldVisual, this);
+    this.events.on('zoom-in', () => this.adjustZoom(0.2));
+    this.events.on('zoom-out', () => this.adjustZoom(-0.2));
+    this.events.on('zoom-reset', () => this.cameras.main.setZoom(this.defaultZoom));
     this.events.on('ping_marker', (data: { x: number; y: number }) => {
       this.showPingMarker(data.x, data.y);
     });
@@ -209,10 +229,18 @@ export class GameScene extends Phaser.Scene {
     const zoomY = camH / (this.mapHeight * TILE_SIZE);
     const zoom = Math.min(zoomX, zoomY) * 0.95;
     this.cameras.main.setZoom(zoom);
+    this.defaultZoom = this.cameras.main.zoom;
     this.cameras.main.centerOn(
       (this.mapWidth * TILE_SIZE) / 2,
       (this.mapHeight * TILE_SIZE) / 2
     );
+  }
+
+  private adjustZoom(delta: number): void {
+    const cam = this.cameras.main;
+    const MIN_ZOOM = 0.4;
+    const MAX_ZOOM = 2.0;
+    cam.setZoom(Phaser.Math.Clamp(cam.zoom + delta, MIN_ZOOM, MAX_ZOOM));
   }
 
   // ─── Autotile helpers ───────────────────────────────────────────

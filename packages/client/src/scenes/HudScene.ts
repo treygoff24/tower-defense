@@ -185,6 +185,46 @@ export class HudScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 2,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101).setVisible(false);
+
+    // ── Zoom controls (bottom-right) ────────────────────────────
+    const emitZoomEvent = (eventName: string): void => {
+      const gameScene = this.scene.get('GameScene');
+      if (!gameScene) return;
+      gameScene.events.emit(eventName);
+    };
+
+    const createZoomButton = (
+      label: string,
+      x: number,
+      y: number,
+      eventName: string,
+    ): Phaser.GameObjects.Container => {
+      const container = this.add.container(x, y);
+      container.setScrollFactor(0).setDepth(101);
+
+      const bg = this.add.graphics();
+      bg.fillStyle(0x14152a, 0.95);
+      bg.fillRoundedRect(-14, -14, 28, 28, 6);
+      bg.lineStyle(1, 0x6f9eff, 0.9);
+      bg.strokeRoundedRect(-14, -14, 28, 28, 6);
+
+      const text = this.add.text(0, 0, label, {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+        color: '#ffffff',
+      }).setOrigin(0.5, 0.45);
+
+      const hit = this.add.rectangle(0, 0, 28, 28, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+
+      hit.on('pointerdown', () => emitZoomEvent(eventName));
+
+      container.add([bg, text, hit]);
+      return container;
+    };
+
+    createZoomButton('−', W - 46, H - 56, 'zoom-out');
+    createZoomButton('+', W - 14, H - 56, 'zoom-in');
   }
 
   // ─────────────────────────────────────────────────────────────────
