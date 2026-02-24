@@ -46,8 +46,8 @@ export class TowerPanel {
   private titleText: Phaser.GameObjects.Text | null = null;
 
   private towerItemContainers: Phaser.GameObjects.Container[] = [];
-  private panelWidth = 220;
-  private itemHeight = 70;
+  private panelWidth = 280;
+  private itemHeight = 90;
 
   /** Track the breathing-glow tween on the selected item */
   private selectionTween: Phaser.Tweens.Tween | null = null;
@@ -96,7 +96,7 @@ export class TowerPanel {
 
     this.titleText = this.scene.add
       .text(0, -180, `${icon} TOWERS`, {
-        fontSize: '18px',
+        fontSize: '22px',
         fontFamily: 'Arial',
         fontStyle: 'bold',
         color,
@@ -319,7 +319,7 @@ export class TowerPanel {
     const displayName = this.truncateName(config.name, textMaxWidth, 12);
     const name = this.scene.add
       .text(textX, -16, displayName, {
-        fontSize: '12px',
+        fontSize: '16px',
         fontFamily: '"Arial Black", Arial',
         fontStyle: 'bold',
         color: nameColor,
@@ -339,7 +339,7 @@ export class TowerPanel {
     }
     const cost = this.scene.add
       .text(textX, 2, costStr, {
-        fontSize: '11px',
+        fontSize: '15px',
         fontFamily: 'Arial',
         color: costColor,
       })
@@ -350,7 +350,7 @@ export class TowerPanel {
     const rangeVal = towerCfg ? towerCfg.range : config.range;
     const rangeText = this.scene.add
       .text(textX, 16, `📏 ${rangeVal} tiles`, {
-        fontSize: '10px',
+        fontSize: '14px',
         fontFamily: 'Arial',
         color: '#888888',
       })
