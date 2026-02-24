@@ -70,10 +70,10 @@ describe('TowerSystem', () => {
     expect(result.tower!.configId).toBe('arrow_tower');
   });
 
-  it('rejects placement outside build zone', () => {
-    const result = system.placeTower('arrow_tower', 0, 0, 'p1');
+  it('rejects placement on path', () => {
+    const result = system.placeTower('arrow_tower', 0, 7, 'p1');
     expect(result.ok).toBe(false);
-    expect(result.reason).toContain('build zone');
+    expect(result.reason).toContain('Cannot build on path');
   });
 
   it('rejects placement on occupied tile', () => {

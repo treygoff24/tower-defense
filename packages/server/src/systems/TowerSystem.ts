@@ -1,6 +1,6 @@
 // packages/server/src/systems/TowerSystem.ts
 import type { TowerConfig, TowerState, MapConfig } from '@td/shared';
-import { TOWER_SELL_REFUND_PERCENT } from '@td/shared';
+import { TOWER_SELL_REFUND_PERCENT, isOnPath } from '@td/shared';
 
 // NOTE: nextTowerId is intentionally an instance-level counter (not module-level)
 // to prevent state leaking between test runs in Vitest.
@@ -40,18 +40,12 @@ export class TowerSystem {
     return `${x},${y}`;
   }
 
-  private isInBuildZone(x: number, y: number): boolean {
-    return this.map.buildZones.some(
-      (zone) => x >= zone.x && x < zone.x + zone.width && y >= zone.y && y < zone.y + zone.height,
-    );
-  }
-
   placeTower(configId: string, x: number, y: number, ownerId: string): PlaceResult {
     const config = this.configs[configId];
     if (!config) return { ok: false, reason: 'Unknown tower config' };
 
-    if (!this.isInBuildZone(x, y)) {
-      return { ok: false, reason: 'Not in a build zone' };
+    if (isOnPath(x, y, this.map.waypoints)) {
+      return { ok: false, reason: 'Cannot build on path' };
     }
 
     if (this.occupiedTiles.has(this.tileKey(x, y))) {

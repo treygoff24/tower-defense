@@ -257,9 +257,10 @@ describe('Multiplayer Socket.IO Integration', () => {
       client.on('snapshot', handler);
     });
 
-    // Try placing outside any build zone (0,0)
-    const result = await sendCommand(client, { type: 'place_tower', configId: 'arrow_tower', x: 0, y: 0 });
+    // Try placing on path (0,4), which should be rejected now.
+    const result = await sendCommand(client, { type: 'place_tower', configId: 'arrow_tower', x: 0, y: 4 });
     expect(result.ok).toBe(false);
+    expect(result.reason).toContain('Cannot build on path');
   });
 
   it('starting a wave transitions to combat phase', async () => {

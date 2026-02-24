@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameState, GamePhase, Vec2, TowerState, EnemyState, BuildZone } from '@td/shared';
-import { TILE_SIZE, MAP_CONFIGS, TOWER_CONFIGS } from '@td/shared';
+import { TILE_SIZE, MAP_CONFIGS, TOWER_CONFIGS, isOnPath as isPathTile } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { ENEMY_ASSETS, TOWER_ASSETS, GRUNT_VARIANT_KEYS, GRUNT_VARIANT_TINTS } from '../assets/manifest';
 import type { TowerAssetInfo } from '../assets/manifest';
@@ -80,6 +80,7 @@ export class GameScene extends Phaser.Scene {
   private buildZones: BuildZone[] = [];
   private mapWidth = 0;
   private mapHeight = 0;
+  private blockedDecoTiles: Set<string> = new Set();
   private currentPhase: GamePhase = 'prep';
   private selectedTowerId: string | null = null;
   private defaultZoom: number = 1;
@@ -582,6 +583,7 @@ export class GameScene extends Phaser.Scene {
 
   private spawnDecorations(): void {
     this.decorationLayer.clear(true, true);
+    this.blockedDecoTiles.clear();
 
     // Spritesheet-based assets with frame counts (pick random frame to vary appearance)
     // Tree frames: 256×256px → scale 0.17 ≈ 43px (~0.67 tiles). Rocks are single images.
@@ -639,20 +641,15 @@ export class GameScene extends Phaser.Scene {
       deco.setDepth(DECO_DEPTH + ty * 0.01); // Y-sort
       deco.setAlpha(0.92);
       this.decorationLayer.add(deco);
+
+      if (asset.key.startsWith('deco_tree') || asset.key.startsWith('deco_rock')) {
+        this.blockedDecoTiles.add(`${tx},${ty}`);
+      }
     }
   }
 
   private isOnPath(tx: number, ty: number): boolean {
-    for (let i = 0; i < this.waypoints.length - 1; i++) {
-      const a = this.waypoints[i];
-      const b = this.waypoints[i + 1];
-      if (a.x === b.x) {
-        if (tx === a.x && ty >= Math.min(a.y, b.y) && ty <= Math.max(a.y, b.y)) return true;
-      } else {
-        if (ty === a.y && tx >= Math.min(a.x, b.x) && tx <= Math.max(a.x, b.x)) return true;
-      }
-    }
-    return false;
+    return isPathTile(tx, ty, this.waypoints);
   }
 
   private isInBuildZone(tx: number, ty: number): boolean {
@@ -693,7 +690,7 @@ export class GameScene extends Phaser.Scene {
 
     const tileX = Math.floor(pointer.worldX / TILE_SIZE);
     const tileY = Math.floor(pointer.worldY / TILE_SIZE);
-    const valid = this.isValidBuildTile(tileX, tileY) && !this.isTileOccupied(tileX, tileY);
+    const valid = this.isValidBuildTile(tileX, tileY);
     const cx = tileX * TILE_SIZE + TILE_SIZE / 2;
     const cy = tileY * TILE_SIZE + TILE_SIZE / 2;
 
@@ -745,7 +742,7 @@ export class GameScene extends Phaser.Scene {
     const canPlace = this.currentPhase === 'prep' || this.currentPhase === 'combat';
     if (canPlace && this.selectedTowerId) {
       const gameClient = this.registry.get('gameClient') as GameClient;
-      if (gameClient && this.isValidBuildTile(tileX, tileY) && !this.isTileOccupied(tileX, tileY)) {
+      if (gameClient && this.isValidBuildTile(tileX, tileY)) {
         this.events.emit('tile-clicked', { tileX, tileY, configId: this.selectedTowerId });
       }
     } else if (this.currentPhase === 'prep' || this.currentPhase === 'combat') {
@@ -1683,10 +1680,11 @@ export class GameScene extends Phaser.Scene {
   // ─────────────────────────────────────────────────────────────────
 
   isValidBuildTile(tileX: number, tileY: number): boolean {
-    return this.buildZones.some(
-      (z) =>
-        tileX >= z.x && tileX < z.x + z.width && tileY >= z.y && tileY < z.y + z.height
-    );
+    if (tileX < 0 || tileY < 0 || tileX >= this.mapWidth || tileY >= this.mapHeight) return false;
+    if (this.isOnPath(tileX, tileY)) return false;
+    if (this.blockedDecoTiles.has(`${tileX},${tileY}`)) return false;
+    if (this.isTileOccupied(tileX, tileY)) return false;
+    return true;
   }
 
   private isTileOccupied(tileX: number, tileY: number): boolean {

@@ -273,5 +273,6 @@ export const TILE_SIZE = 64;
 export { TOWER_CONFIGS } from './data/towers.js';
 export { WAVE_CONFIGS } from './data/waves.js';
 export { MAP_CONFIGS } from './data/maps.js';
+export { isOnPath } from './data/pathUtils.js';
 export { REACTION_CONFIGS } from './data/reactions.js';
 export { CLASS_CONFIGS } from './data/classes.js';
