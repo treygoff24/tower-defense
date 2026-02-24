@@ -24,6 +24,7 @@ export type TargetType = 'ground' | 'air' | 'both';
 export interface TowerConfig {
   id: string;
   name: string;
+  description?: string;
   class: ElementType | 'shared';
   category: TowerCategory;
   roles: TowerRole[];

@@ -160,6 +160,11 @@ export class TowerPanel {
 
     // Header: name
     lines.push(`[ ${config.name} ]`);
+    lines.push('');
+    if (config.description) {
+      lines.push(config.description);
+    }
+    lines.push('');
     lines.push(`Cost: ${config.costGold}g`);
 
     // Stats

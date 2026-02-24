@@ -102,6 +102,25 @@ export class TowerInspector {
     items.push(tierText);
     cy += 18;
 
+    // ── Tower description ───────────────────────────────────────────────
+    const description = this.config?.description ?? '';
+    if (description.length > 0) {
+      const descriptionText = this.scene.add
+        .text(0, cy, description, {
+          fontSize: '14px',
+          fontFamily: 'Arial',
+          color: '#ccccdd',
+          align: 'center',
+          wordWrap: {
+            width: PW - 28,
+            useAdvancedWrap: true,
+          },
+        })
+        .setOrigin(0.5, 0);
+      items.push(descriptionText);
+      cy += descriptionText.height + 8;
+    }
+
     // ── Owner ────────────────────────────────────────────────────────────────
     if (this.opts.ownerName) {
       const ownerText = this.scene.add

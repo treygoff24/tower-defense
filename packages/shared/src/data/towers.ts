@@ -8,6 +8,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   arrow_tower: {
     id: 'arrow_tower',
     name: 'Arrow Tower',
+    description: 'Reliable single-target tower. Fast attack speed with moderate damage.',
     class: 'shared',
     category: 'basic',
     roles: ['damage'],
@@ -25,6 +26,8 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   amplifier_tower: {
     id: 'amplifier_tower',
     name: 'Amplifier Tower',
+    description:
+      'SUPPORT — Does not attack. Boosts damage of all towers within range by 15% (20% at tier 2, 25% at tier 3). Stack near tower clusters for maximum effect.',
     class: 'shared',
     category: 'basic',
     roles: ['support'],
@@ -42,6 +45,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   ballista: {
     id: 'ballista',
     name: 'Ballista',
+    description: 'High single-shot damage with long range. Slow reload. Best against tanks and bosses.',
     class: 'shared',
     category: 'basic',
     roles: ['damage'],
@@ -59,6 +63,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   scout_tower: {
     id: 'scout_tower',
     name: 'Scout Tower',
+    description: 'UTILITY — Reveals invisible enemies within range. Does not deal damage.',
     class: 'shared',
     category: 'basic',
     roles: ['utility'],
@@ -80,6 +85,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   flame_spire: {
     id: 'flame_spire',
     name: 'Flame Spire',
+    description: 'Area-of-effect fire tower. Damages all enemies in radius and applies burn over time.',
     class: 'fire',
     category: 'specialty',
     roles: ['damage', 'aoe'],
@@ -99,6 +105,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   inferno_cannon: {
     id: 'inferno_cannon',
     name: 'Inferno Cannon',
+    description: 'Single-target heavy cannon with very high damage and lingering fire DoT.',
     class: 'fire',
     category: 'specialty',
     roles: ['damage'],
@@ -117,6 +124,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   magma_pool: {
     id: 'magma_pool',
     name: 'Magma Pool',
+    description: 'Fire hazard zone that burns grouped ground enemies over time for sustained crowd pressure.',
     class: 'fire',
     category: 'specialty',
     roles: ['aoe', 'damage'],
@@ -140,6 +148,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   tidal_tower: {
     id: 'tidal_tower',
     name: 'Tidal Tower',
+    description: 'Water assault tower with AoE splash and slowing impact on both air and ground enemies.',
     class: 'water',
     category: 'specialty',
     roles: ['damage', 'cc'],
@@ -159,6 +168,8 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   geyser: {
     id: 'geyser',
     name: 'Geyser',
+    description:
+      'Knockback specialist. Low damage but pushes enemies backward along the path.',
     class: 'water',
     category: 'specialty',
     roles: ['cc'],
@@ -177,6 +188,8 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   whirlpool: {
     id: 'whirlpool',
     name: 'Whirlpool',
+    description:
+      'Area control tower that adds splash water damage and long slowing effects for enemy crowd management.',
     class: 'water',
     category: 'specialty',
     roles: ['aoe', 'cc'],
@@ -200,6 +213,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   frost_turret: {
     id: 'frost_turret',
     name: 'Frost Turret',
+    description: 'Balanced ice tower with reliable single-target damage plus a meaningful slow effect.',
     class: 'ice',
     category: 'specialty',
     roles: ['damage', 'cc'],
@@ -218,6 +232,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   blizzard_tower: {
     id: 'blizzard_tower',
     name: 'Blizzard Tower',
+    description: 'Area freeze-like blast that deals multiple-target damage and heavy short-term crowd control.',
     class: 'ice',
     category: 'specialty',
     roles: ['aoe', 'cc'],
@@ -237,6 +252,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   glacial_spike: {
     id: 'glacial_spike',
     name: 'Glacial Spike',
+    description: 'Fast single-target ice damage with bonus range growth at higher tiers.',
     class: 'ice',
     category: 'specialty',
     roles: ['damage'],
@@ -259,6 +275,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   venom_spitter: {
     id: 'venom_spitter',
     name: 'Venom Spitter',
+    description: 'Rapid poison damage tower with continuous toxic burn over several seconds.',
     class: 'poison',
     category: 'specialty',
     roles: ['damage'],
@@ -277,6 +294,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   plague_spreader: {
     id: 'plague_spreader',
     name: 'Plague Spreader',
+    description: 'Steady poison fire support for single targets with persistent stacking damage.',
     class: 'poison',
     category: 'specialty',
     roles: ['damage'],
@@ -295,6 +313,7 @@ export const TOWER_CONFIGS: Record<string, TowerConfig> = {
   miasma_cloud: {
     id: 'miasma_cloud',
     name: 'Miasma Cloud',
+    description: 'Area-of-effect poison cloud that damages all enemies inside its radius and keeps pressure on groups.',
     class: 'poison',
     category: 'specialty',
     roles: ['aoe', 'damage'],
