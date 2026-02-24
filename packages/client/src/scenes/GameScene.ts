@@ -120,7 +120,8 @@ export class GameScene extends Phaser.Scene {
     // Input
     this.input.mouse?.disableContextMenu(); // Allow right-click for ping
     this.input.on('pointermove', this.handleMouseMove, this);
-    this.input.on('pointerdown', this.handleTileClick, this);
+    this.input.on('pointerup', this.handleTileClick, this);
+    this.input.setDefaultCursor('auto');
 
     // Events from HUD / network
     this.events.on('sync-state', this.syncState, this);
@@ -699,6 +700,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleTileClick(pointer: Phaser.Input.Pointer): void {
+    if (pointer.getDistance() > 5) return;
+
     // Right-click → send ping at tile coords
     if (pointer.rightButtonDown()) {
       const tileX = Math.floor(pointer.worldX / TILE_SIZE);
@@ -762,10 +765,12 @@ export class GameScene extends Phaser.Scene {
 
   private handleTowerSelected(configId: string): void {
     this.selectedTowerId = configId;
+    this.input.setDefaultCursor('crosshair');
   }
 
   private handleTowerDeselected(): void {
     this.selectedTowerId = null;
+    this.input.setDefaultCursor('auto');
     this.ghostGraphics.clear();
     this.rangePreview.clear();
   }
@@ -925,6 +930,7 @@ export class GameScene extends Phaser.Scene {
     base.setScale(BUILDING_SCALE);
     base.setDepth(ENTITY_DEPTH + py * 0.001);
     base.setOrigin(0.5, 0.7);
+    base.setInteractive({ useHandCursor: true });
 
     // Soldier sprite (animated, sits on top of building)
     const soldier = this.add.sprite(px, py - 8, soldierKey);
