@@ -44,7 +44,7 @@ interface ComputedStats {
 }
 
 // ── Panel constants ───────────────────────────────────────────────────────────
-const PW = 240; // panel width
+const PW = 300; // panel width
 
 // ─────────────────────────────────────────────────────────────────────────────
 export class TowerInspector {
@@ -84,7 +84,7 @@ export class TowerInspector {
     cy += 12;
     const nameText = this.scene.add
       .text(0, cy, this.config?.name ?? this.opts.configId, {
-        fontSize: '14px',
+        fontSize: '22px',
         fontFamily: '"Arial Black", Arial',
         color: '#ffffff',
         stroke: '#000000',
@@ -97,7 +97,7 @@ export class TowerInspector {
     // ── Tier stars ──────────────────────────────────────────────────────────
     const stars = '★'.repeat(this.opts.tier) + '☆'.repeat(Math.max(0, 3 - this.opts.tier));
     const tierText = this.scene.add
-      .text(0, cy, stars, { fontSize: '14px', fontFamily: 'Arial', color: '#ffd700' })
+      .text(0, cy, stars, { fontSize: '18px', fontFamily: 'Arial', color: '#ffd700' })
       .setOrigin(0.5, 0.5);
     items.push(tierText);
     cy += 18;
@@ -105,8 +105,8 @@ export class TowerInspector {
     // ── Owner ────────────────────────────────────────────────────────────────
     if (this.opts.ownerName) {
       const ownerText = this.scene.add
-        .text(0, cy, `👤 Owned by: ${this.opts.ownerName}`, {
-          fontSize: '11px',
+      .text(0, cy, `👤 Owned by: ${this.opts.ownerName}`, {
+          fontSize: '15px',
           fontFamily: 'Arial',
           color: '#88ccff',
         })
@@ -125,17 +125,17 @@ export class TowerInspector {
     const rows = this.buildStatRows(stats);
     for (const row of rows) {
       const lbl = this.scene.add
-        .text(-halfW + 14, cy, row.label, { fontSize: '11px', fontFamily: 'Arial', color: '#aabbcc' })
+      .text(-halfW + 14, cy, row.label, { fontSize: '16px', fontFamily: 'Arial', color: '#aabbcc' })
         .setOrigin(0, 0.5);
       const val = this.scene.add
         .text(halfW - 14, cy, row.value, {
-          fontSize: '11px',
+          fontSize: '16px',
           fontFamily: '"Arial Black", Arial',
           color: '#ffffff',
         })
         .setOrigin(1, 0.5);
       items.push(lbl, val);
-      cy += 21;
+      cy += 28;
     }
 
     // ── Separator ───────────────────────────────────────────────────────────
@@ -256,7 +256,7 @@ export class TowerInspector {
     const labelColor = canAfford ? '#88ff88' : '#446644';
     const label = this.scene.add
       .text(0, deltaStr ? -9 : 0, `⬆ Upgrade — 💰 ${cost}g`, {
-        fontSize: '12px',
+        fontSize: '16px',
         fontFamily: '"Arial Black", Arial',
         color: labelColor,
       })
@@ -299,7 +299,7 @@ export class TowerInspector {
 
     const label = this.scene.add
       .text(0, 0, `💰 Sell for ${refund}g`, {
-        fontSize: '12px',
+        fontSize: '16px',
         fontFamily: '"Arial Black", Arial',
         color: '#ffffff',
       })
@@ -322,7 +322,7 @@ export class TowerInspector {
     const c = this.scene.add.container(0, y + rowH / 2);
 
     const lbl = this.scene.add
-      .text(-halfW + 14, 0, 'Target:', { fontSize: '11px', fontFamily: 'Arial', color: '#aabbcc' })
+      .text(-halfW + 14, 0, 'Target:', { fontSize: '15px', fontFamily: 'Arial', color: '#aabbcc' })
       .setOrigin(0, 0.5);
 
     const btnW = 118;

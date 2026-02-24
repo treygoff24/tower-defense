@@ -3,11 +3,11 @@ import type { EnemyState, EnemyStatus } from '@td/shared';
 import { TILE_SIZE } from '@td/shared';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const PW = 190; // panel width
+const PW = 260; // panel width
 const HP_BAR_W = PW - 28;
-const HP_BAR_H = 8;
+const HP_BAR_H = 12;
 const INSPECTOR_DEPTH = 200;
-const PANEL_OFFSET_Y = -110; // how far above the enemy sprite to anchor the panel
+const PANEL_OFFSET_Y = -150; // how far above the enemy sprite to anchor the panel
 
 // ── Status display helpers ────────────────────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
@@ -127,7 +127,7 @@ export class EnemyInspector {
     cy += 14;
     const nameText = this.scene.add
       .text(0, cy, formatEnemyType(enemy.type), {
-        fontSize: '13px',
+        fontSize: '20px',
         fontFamily: '"Arial Black", Arial',
         color: '#ffdd88',
         stroke: '#000000',
@@ -144,7 +144,7 @@ export class EnemyInspector {
     // ── HP label + bar ───────────────────────────────────────────────────────
     this.hpText = this.scene.add
       .text(0, cy, `HP: ${enemy.hp} / ${this.maxHp}`, {
-        fontSize: '11px',
+        fontSize: '16px',
         fontFamily: 'Arial',
         color: '#ffffff',
       })
@@ -172,20 +172,20 @@ export class EnemyInspector {
     for (const row of statRows) {
       const lbl = this.scene.add
         .text(-halfW + 12, cy, row.label, {
-          fontSize: '11px',
+          fontSize: '16px',
           fontFamily: 'Arial',
           color: '#aabbcc',
         })
         .setOrigin(0, 0.5);
       const val = this.scene.add
         .text(halfW - 12, cy, row.value, {
-          fontSize: '11px',
+          fontSize: '16px',
           fontFamily: '"Arial Black", Arial',
           color: '#ffffff',
         })
         .setOrigin(1, 0.5);
       items.push(lbl, val);
-      cy += 20;
+      cy += 26;
     }
 
     // ── Active statuses ──────────────────────────────────────────────────────
@@ -258,7 +258,7 @@ export class EnemyInspector {
       const stackStr = status.stacks > 1 ? ` ×${status.stacks}` : '';
       const txt = this.scene.add
         .text(0, cy, `${label}${stackStr}${durStr}`, {
-          fontSize: '10px',
+          fontSize: '14px',
           fontFamily: 'Arial',
           color,
           stroke: '#000000',
