@@ -124,7 +124,7 @@ export class GameScene extends Phaser.Scene {
     this.input.on(
       'pointermove',
       (ptr: Phaser.Input.Pointer) => {
-        if (ptr.isDown && ptr.button === 0 && this.cameras.main.zoom > 1.1 && !this.selectedTowerId) {
+        if (ptr.isDown && ptr.button === 0 && this.cameras.main.zoom > this.defaultZoom + 0.01 && !this.selectedTowerId) {
           this.cameras.main.scrollX -= (ptr.x - ptr.prevPosition.x) / this.cameras.main.zoom;
           this.cameras.main.scrollY -= (ptr.y - ptr.prevPosition.y) / this.cameras.main.zoom;
         }
@@ -731,7 +731,7 @@ export class GameScene extends Phaser.Scene {
     if (pointer.getDistance() > 5) return;
 
     // Right-click → send ping at tile coords
-    if (pointer.rightButtonDown()) {
+    if (pointer.button === 2) {
       const tileX = Math.floor(pointer.worldX / TILE_SIZE);
       const tileY = Math.floor(pointer.worldY / TILE_SIZE);
       const gameClient = this.registry.get('gameClient') as GameClient;
@@ -793,14 +793,22 @@ export class GameScene extends Phaser.Scene {
 
   private handleTowerSelected(configId: string): void {
     this.selectedTowerId = configId;
+    this.setTowerBaseHandCursor(false);
     this.input.setDefaultCursor('crosshair');
   }
 
   private handleTowerDeselected(): void {
     this.selectedTowerId = null;
+    this.setTowerBaseHandCursor(true);
     this.input.setDefaultCursor('auto');
     this.ghostGraphics.clear();
     this.rangePreview.clear();
+  }
+
+  private setTowerBaseHandCursor(useHandCursor: boolean): void {
+    this.towers.forEach((tv) => {
+      tv.base.setInteractive({ useHandCursor });
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────

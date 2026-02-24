@@ -701,6 +701,14 @@ export class HudScene extends Phaser.Scene {
     panelBg.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
     previewContainer.add(panelBg);
 
+    const panelHit = this.add
+      .rectangle(0, 0, panelW, panelH, 0, 0)
+      .setInteractive()
+      .on('pointerdown', (_ptr: any, _lx: any, _ly: any, evt: Phaser.Types.Input.EventData) => {
+        evt.stopPropagation();
+      });
+    previewContainer.add(panelHit);
+
     const title = this.add.text(0, panelY + 16, '📋 Wave Preview', {
       fontSize: '20px',
       fontFamily: '"Arial Black", Arial',

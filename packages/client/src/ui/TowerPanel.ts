@@ -323,7 +323,7 @@ export class TowerPanel {
     const nameColor = canAfford ? '#ffffff' : '#554444';
     const displayName = this.truncateName(config.name, textMaxWidth, 12);
     const name = this.scene.add
-      .text(textX, -16, displayName, {
+      .text(textX, -22, displayName, {
         fontSize: '16px',
         fontFamily: '"Arial Black", Arial',
         fontStyle: 'bold',
@@ -343,7 +343,7 @@ export class TowerPanel {
       costColor = '#cc4444';
     }
     const cost = this.scene.add
-      .text(textX, 2, costStr, {
+      .text(textX, 0, costStr, {
         fontSize: '15px',
         fontFamily: 'Arial',
         color: costColor,
@@ -354,7 +354,7 @@ export class TowerPanel {
     const towerCfg = TOWER_CONFIGS[config.id];
     const rangeVal = towerCfg ? towerCfg.range : config.range;
     const rangeText = this.scene.add
-      .text(textX, 16, `📏 ${rangeVal} tiles`, {
+      .text(textX, 22, `📏 ${rangeVal} tiles`, {
         fontSize: '14px',
         fontFamily: 'Arial',
         color: '#888888',

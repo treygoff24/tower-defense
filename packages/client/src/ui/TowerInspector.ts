@@ -115,10 +115,10 @@ export class TowerInspector {
             width: PW - 28,
             useAdvancedWrap: true,
           },
-        })
-        .setOrigin(0.5, 0);
+      })
+      .setOrigin(0.5, 0);
       items.push(descriptionText);
-      cy += descriptionText.height + 8;
+      cy += descriptionText.height + 14;
     }
 
     // ── Owner ────────────────────────────────────────────────────────────────
