@@ -92,6 +92,7 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
           enemies: {},
           prepTimeRemaining: 30,
           tick: 0,
+          gameSpeed: 1,
         };
         gameScene.events.emit('sync-state', mockState);
         // Sync HudScene too so TowerPanel and class icon appear
