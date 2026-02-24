@@ -47,6 +47,9 @@ export class HudScene extends Phaser.Scene {
   private inspectorBackdrop: Phaser.GameObjects.Rectangle | null = null;
   private targetingModes: Map<string, TargetingMode> = new Map();
   private hudGold = 0;
+  private wavePreviewContainer: Phaser.GameObjects.Container | null = null;
+  private currentWaveNum: number = 0;
+  private wavePreviewEscKey: Phaser.Input.Keyboard.Key | null = null;
 
   /* Tracking for polish features */
   private lastWaveText = '';
@@ -87,7 +90,14 @@ export class HudScene extends Phaser.Scene {
   create(): void {
     this.createHudElements();
     this.setupChatSystem();
+    this.setupWavePreviewKeyboard();
   }
+
+  private handleWavePreviewEsc = (): void => {
+    if (this.wavePreviewContainer) {
+      this.toggleWavePreview();
+    }
+  };
 
   private createHudElements(): void {
     const W = this.cameras.main.width;
@@ -120,6 +130,17 @@ export class HudScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 2,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(101);
+
+    const waveBtn = this.add.text(W / 2 + 120, 26, '📋 Waves', {
+      fontSize: '14px',
+      fontFamily: 'Arial',
+      color: '#aaccff',
+      backgroundColor: '#111133',
+      padding: { x: 6, y: 3 },
+    }).setScrollFactor(0).setDepth(101).setInteractive({ useHandCursor: true });
+    waveBtn.on('pointerdown', () => this.toggleWavePreview());
+    waveBtn.on('pointerover', () => waveBtn.setColor('#ffffff'));
+    waveBtn.on('pointerout', () => waveBtn.setColor('#aaccff'));
 
     // ── Base HP (top-right) ────────────────────────────────────────
     const hpPanelW = 210;
@@ -409,6 +430,7 @@ export class HudScene extends Phaser.Scene {
   syncState(state: GameState): void {
     if (!this.goldText) return;
     this.lastKnownState = state;
+    this.currentWaveNum = (state as { currentWave?: number }).currentWave ?? 0;
 
     // ── Stats tracking ────────────────────────────────────────────
     // Enemies killed: alive last tick but now gone/dead
@@ -548,8 +570,8 @@ export class HudScene extends Phaser.Scene {
   }
 
   private showDamageIndicator(currentHp: number, prevHp: number): void {
-    const dmg = prevHp - currentHp;
     const W = this.cameras.main.width;
+    const dmg = prevHp - currentHp;
     const dmgText = this.add.text(W - 30, 65, `-${dmg}`, {
       fontSize: '26px',
       fontFamily: '"Arial Black", Arial',
@@ -566,6 +588,138 @@ export class HudScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => { dmgText.destroy(); },
     });
+  }
+
+  private setupWavePreviewKeyboard(): void {
+    if (!this.input.keyboard) return;
+
+    if (!this.wavePreviewEscKey) {
+      this.wavePreviewEscKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+      this.wavePreviewEscKey.on('down', this.handleWavePreviewEsc);
+    }
+  }
+
+  private toggleWavePreview(): void {
+    if (this.wavePreviewContainer) {
+      this.wavePreviewContainer.destroy();
+      this.wavePreviewContainer = null;
+      return;
+    }
+
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
+    const previewContainer = this.add.container(W / 2, H / 2)
+      .setScrollFactor(0)
+      .setDepth(210);
+
+    const backdrop = this.add.rectangle(0, 0, W, H, 0x000000, 0.45)
+      .setScrollFactor(0)
+      .setInteractive()
+      .setDepth(1)
+      .on('pointerdown', () => this.toggleWavePreview());
+    previewContainer.add(backdrop);
+
+    const panelW = Math.min(760, W - 64);
+    const maxRows = 9;
+    const rowH = 24;
+    const startWave = Math.max(this.currentWaveNum, 1);
+    const upcomingWaves = WAVE_CONFIGS
+      .filter((waveCfg) => waveCfg.wave >= startWave)
+      .slice(0, maxRows);
+    const panelH = Math.max(140, 64 + upcomingWaves.length * rowH);
+    const panelX = -panelW / 2;
+    const panelY = -panelH / 2;
+
+    const panelBg = this.add.graphics();
+    panelBg.fillStyle(0x09102a, 0.95);
+    panelBg.fillRoundedRect(panelX, panelY, panelW, panelH, 10);
+    panelBg.lineStyle(2, 0x88aaff, 0.95);
+    panelBg.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
+    previewContainer.add(panelBg);
+
+    const title = this.add.text(0, panelY + 16, '📋 Wave Preview', {
+      fontSize: '20px',
+      fontFamily: '"Arial Black", Arial',
+      color: '#88ccff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5, 0);
+    previewContainer.add(title);
+
+    const closeBtn = this.add.text(panelX + panelW - 12, panelY + 10, '✕', {
+      fontSize: '22px',
+      fontFamily: 'Arial',
+      color: '#ff8f8f',
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    closeBtn.setScrollFactor(0);
+    closeBtn.on('pointerover', () => closeBtn.setColor('#ffffff'));
+    closeBtn.on('pointerout', () => closeBtn.setColor('#ff8f8f'));
+    closeBtn.on('pointerdown', () => this.toggleWavePreview());
+    previewContainer.add(closeBtn);
+
+    const enemyIcons: Record<string, string> = {
+      grunt: '👣',
+      runner: '💨',
+      tank: '🛡',
+      flyer: '🦋',
+      invisible: '👻',
+      caster: '🧙',
+      boss: '💀',
+    };
+
+    const baseY = panelY + 50;
+    if (upcomingWaves.length === 0) {
+      const emptyText = this.add.text(0, baseY, 'No upcoming waves configured', {
+        fontSize: '14px',
+        fontFamily: 'Arial',
+        color: '#99aacc',
+      }).setOrigin(0.5);
+      previewContainer.add(emptyText);
+    } else {
+      upcomingWaves.forEach((waveCfg, i) => {
+        const y = baseY + i * rowH;
+        const isCurrent = waveCfg.wave === this.currentWaveNum;
+        const isNext = waveCfg.wave === this.currentWaveNum + 1;
+        const isPast = waveCfg.wave < this.currentWaveNum;
+
+        const rowColor = isCurrent ? '#ffd95a' : isNext ? '#7fff88' : '#dde6ff';
+        const rowAlpha = isPast ? 0.4 : 1;
+
+        const rowBg = this.add.graphics();
+        if (isCurrent) {
+          rowBg.fillStyle(0x443300, 0.25);
+          rowBg.fillRoundedRect(panelX + 8, y - 12, panelW - 16, 20, 6);
+        }
+        previewContainer.add(rowBg);
+
+        const groupText = waveCfg.groups
+          .map((g) => `${enemyIcons[g.enemyType] ?? '👾'} ${g.enemyType} ×${g.count}`)
+          .join('  ');
+        const waveText = this.add.text(panelX + 14, y, `Wave ${waveCfg.wave}`, {
+          fontSize: '12px',
+          fontFamily: 'Arial',
+          color: rowColor,
+        }).setOrigin(0, 0.5);
+
+        const enemyText = this.add.text(panelX + 120, y, groupText, {
+          fontSize: '12px',
+          fontFamily: 'Arial',
+          color: rowColor,
+        }).setOrigin(0, 0.5);
+
+        const rewardText = this.add.text(panelX + panelW - 14, y, `+${waveCfg.bountyGold}g`, {
+          fontSize: '12px',
+          fontFamily: 'Arial',
+          color: '#ffd700',
+          fontStyle: 'bold',
+        }).setOrigin(1, 0.5);
+
+        const rowContainer = this.add.container(0, 0, [waveText, enemyText, rewardText]);
+        rowContainer.setAlpha(rowAlpha);
+        previewContainer.add(rowContainer);
+      });
+    }
+
+    this.wavePreviewContainer = previewContainer;
   }
 
   private updatePlayerClass(state: GameState): void {
