@@ -166,6 +166,20 @@ export class GameSimulation {
     return { ok: true };
   }
 
+  setGameSpeed(playerId: string, speed: number): CommandResult {
+    if (!this.room.state.players[playerId]) {
+      return { ok: false, reason: 'Player not found' };
+    }
+
+    const allowedSpeeds = [1, 1.5, 2];
+    if (!allowedSpeeds.includes(speed)) {
+      return { ok: false, reason: 'Invalid game speed' };
+    }
+
+    this.room.state.gameSpeed = speed;
+    return { ok: true };
+  }
+
   startWave(): void {
     if (this.state.phase !== 'prep') return;
     if (!this.waveScheduler.hasMoreWaves()) return;

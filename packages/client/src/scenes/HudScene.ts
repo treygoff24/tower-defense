@@ -52,6 +52,8 @@ export class HudScene extends Phaser.Scene {
   private hudGold = 0;
   private wavePreviewContainer: Phaser.GameObjects.Container | null = null;
   private currentWaveNum: number = 0;
+  private currentSpeed: number = 1;
+  private speedLabel: Phaser.GameObjects.Text | null = null;
 
   /* Tracking for polish features */
   private lastWaveText = '';
@@ -165,6 +167,30 @@ export class HudScene extends Phaser.Scene {
       this.hpBarFillImg = this.add.image(barLeft, 54, 'ui_big_bar_fill')
         .setOrigin(0, 0.5).setDisplaySize(hpPanelW, 16).setScrollFactor(0).setDepth(101);
     }
+
+    // ── Speed toggle (below HP bar) ──────────────────────────────
+    const speedPanelW = 60;
+    const speedPanelH = 24;
+    const speedContainer = this.add.container(W - hpPanelW - 15, 72).setScrollFactor(0).setDepth(101);
+    const speedBg = this.add.graphics();
+    speedBg.fillStyle(0x141833, 0.95);
+    speedBg.fillRoundedRect(-speedPanelW / 2, -speedPanelH / 2, speedPanelW, speedPanelH, 6);
+    speedBg.lineStyle(1, 0x66a6ff, 0.9);
+    speedBg.strokeRoundedRect(-speedPanelW / 2, -speedPanelH / 2, speedPanelW, speedPanelH, 6);
+
+    this.speedLabel = this.add.text(0, 0, `${this.currentSpeed}×`, {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      color: '#e6ecff',
+    }).setOrigin(0.5);
+
+    const speedHit = this.add.rectangle(0, 0, speedPanelW, speedPanelH, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    speedHit.on('pointerdown', () => {
+      this.cycleGameSpeed();
+    });
+
+    speedContainer.add([speedBg, this.speedLabel, speedHit]);
 
     // ── Version display (top-right corner) ────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-undef
@@ -394,6 +420,19 @@ export class HudScene extends Phaser.Scene {
     }
   }
 
+  private cycleGameSpeed(): void {
+    const gameClient = this.registry.get('gameClient') as GameClient;
+    if (!gameClient) return;
+
+    const speedOptions = [1, 1.5, 2];
+    const idx = speedOptions.indexOf(this.currentSpeed);
+    const nextSpeed = speedOptions[(idx + 1) % speedOptions.length];
+
+    gameClient.setGameSpeed(nextSpeed).catch((error: unknown) => {
+      console.error('Failed to set game speed:', error);
+    });
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // Start Wave button pulse (prep phase attention-draw)
   // ─────────────────────────────────────────────────────────────────
@@ -568,6 +607,17 @@ export class HudScene extends Phaser.Scene {
 
     this.updatePlayerClass(state);
     this.updatePhaseDisplay(state.phase);
+
+    if (this.currentSpeed !== state.gameSpeed) {
+      this.currentSpeed = state.gameSpeed;
+      this.speedLabel?.setText(`${this.currentSpeed}×`);
+    }
+
+    this.time.timeScale = this.currentSpeed;
+    const gameScene = this.scene.get('GameScene');
+    if (gameScene) {
+      gameScene.time.timeScale = this.currentSpeed;
+    }
 
     // Start wave button visibility + pulse
     if (state.phase === 'prep') {

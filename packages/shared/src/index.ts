@@ -206,6 +206,7 @@ export interface GameState {
   maxWaves: number;
   baseHp: number;
   maxBaseHp: number;
+  gameSpeed: number;
   economy: EconomyState;
   players: Record<string, PlayerState>;
   towers: Record<string, TowerState>;
@@ -227,7 +228,8 @@ export type ClientCommand =
   | { type: 'start_wave' }
   | { type: 'reconnect'; playerId: string }
   | { type: 'chat'; message: string }
-  | { type: 'ping'; x: number; y: number };
+  | { type: 'ping'; x: number; y: number }
+  | { type: 'set_game_speed'; speed: number };
 
 // Server -> Client events
 export type ServerEvent =
