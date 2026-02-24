@@ -25,6 +25,7 @@ export class GameRoom {
       maxWaves: 20,
       baseHp: BASE_MAX_HP,
       maxBaseHp: BASE_MAX_HP,
+      gameSpeed: 1,
       economy: { gold: 0, lumber: 0 },
       players: {},
       towers: {},

@@ -58,6 +58,9 @@ function createTestServer(): Promise<number> {
               ioServer.emit('event', { type: 'chat_message', playerId: socket.id, message: command.message });
               result = { ok: true };
               break;
+            case 'set_game_speed':
+              result = sim.setGameSpeed(socket.id, command.speed);
+              break;
             default:
               result = { ok: false, reason: 'Unknown command type' };
           }

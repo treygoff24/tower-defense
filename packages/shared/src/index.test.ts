@@ -127,6 +127,7 @@ describe('Type correctness (compile-time checks via assignments)', () => {
       maxWaves: 20,
       baseHp: 100,
       maxBaseHp: 100,
+      gameSpeed: 1,
       economy: { gold: 200, lumber: 0 },
       players: {},
       towers: {},

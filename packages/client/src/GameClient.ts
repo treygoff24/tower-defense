@@ -121,6 +121,10 @@ export class GameClient {
     await this.network.startWave();
   }
 
+  async setGameSpeed(speed: number): Promise<{ ok: boolean; reason?: string }> {
+    return this.sendCommand({ type: 'set_game_speed', speed });
+  }
+
   selectTower(configId: string): void {
     this.selectedTowerId = configId;
   }

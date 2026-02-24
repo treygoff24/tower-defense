@@ -31,7 +31,7 @@ const gameLoop = new GameLoop((dt: number) => {
     io.emit('event', event);
   }
   io.emit('snapshot', sim.state);
-});
+}, () => sim.state.gameSpeed);
 
 gameLoop.start();
 console.log(`Game loop started at ${TICK_RATE}Hz`);
@@ -112,6 +112,9 @@ io.on('connection', (socket) => {
           result = { ok: true };
           break;
         }
+        case 'set_game_speed':
+          result = sim.setGameSpeed(socket.id, command.speed);
+          break;
         default:
           result = { ok: false, reason: `Unknown command type` };
       }
