@@ -252,6 +252,19 @@ export type ServerEvent =
   | { type: 'player_left'; playerId: string }
   | { type: 'error'; message: string };
 
+// ── Dev Mode Commands ────────────────────────────────────────
+export type DevCheatCommand =
+  | { type: 'add_gold'; amount: number }
+  | { type: 'set_gold'; amount: number }
+  | { type: 'skip_prep' }
+  | { type: 'spawn_enemies'; enemyType: EnemyType; count: number; hp?: number; speed?: number }
+  | { type: 'kill_all_enemies' }
+  | { type: 'set_phase'; phase: GamePhase }
+  | { type: 'set_base_hp'; hp: number }
+  | { type: 'set_wave'; wave: number }
+  | { type: 'god_mode'; enabled: boolean }
+  | { type: 'pause_prep_timer'; paused: boolean };
+
 // ── Constants ──────────────────────────────────────────────
 export const TICK_RATE = 20; // server ticks per second
 export const TICK_DURATION_MS = 1000 / TICK_RATE;

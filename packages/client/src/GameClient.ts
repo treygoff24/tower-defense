@@ -3,7 +3,7 @@ import { NetworkManager } from './networking/NetworkManager';
 import { StateInterpolator } from './networking/StateInterpolator';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
-import type { GameState, ElementType } from '@td/shared';
+import type { GameState, ElementType, DevCheatCommand } from '@td/shared';
 
 export class GameClient {
   private network: NetworkManager;
@@ -65,6 +65,14 @@ export class GameClient {
 
   getLatestState(): GameState | null {
     return this.interpolator.getLatestState();
+  }
+
+  async devCheat(cheat: DevCheatCommand): Promise<void> {
+    await this.network.sendDevCheat(cheat);
+  }
+
+  get networkManager(): NetworkManager {
+    return this.network;
   }
 
   disconnect(): void {

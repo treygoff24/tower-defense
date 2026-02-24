@@ -59,6 +59,10 @@ export class WaveScheduler {
     return events;
   }
 
+  setCurrentWave(wave: number): void {
+    this.currentWave = Math.max(0, Math.min(wave, this.waves.length));
+  }
+
   get totalWaves(): number {
     return this.waves.length;
   }

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { GameState, GamePhase, ElementType } from '@td/shared';
+import type { GameState, GamePhase, ElementType, DevCheatCommand } from '@td/shared';
 import { TOWER_CONFIGS } from '@td/shared';
 import { GameClient } from '../GameClient';
 import { TowerPanel } from '../ui/TowerPanel';
@@ -51,6 +51,10 @@ export class HudScene extends Phaser.Scene {
   private startWavePulseTween: Phaser.Tweens.Tween | null = null;
   private prepPhasePulseTween: Phaser.Tweens.Tween | null = null;
   private goldBonusText: Phaser.GameObjects.Text | null = null;
+  private devPanel: Phaser.GameObjects.Container | null = null;
+  private devPanelVisible = false;
+  private godModeEnabled = false;
+  private prepTimerPaused = false;
 
   constructor() {
     super({ key: 'HudScene' });
@@ -58,6 +62,11 @@ export class HudScene extends Phaser.Scene {
 
   create(): void {
     this.createHudElements();
+
+    // Dev mode toggle: backtick key
+    this.input.keyboard?.on('keydown-BACKTICK', () => {
+      this.toggleDevPanel();
+    });
   }
 
   private createHudElements(): void {
@@ -806,5 +815,136 @@ export class HudScene extends Phaser.Scene {
 
   showBaseDamage(damage: number): void {
     this.showDamageIndicator(0, damage);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Dev panel
+  // ─────────────────────────────────────────────────────────────────
+
+  private toggleDevPanel(): void {
+    this.devPanelVisible = !this.devPanelVisible;
+    if (this.devPanelVisible && !this.devPanel) {
+      this.createDevPanel();
+    }
+    this.devPanel?.setVisible(this.devPanelVisible);
+  }
+
+  private createDevPanel(): void {
+    const H = this.cameras.main.height;
+    const panelX = 10 * S;
+    const panelW = 200 * S;
+    const btnH = 28 * S;
+    const btnGap = 4 * S;
+    const pad = 8 * S;
+
+    const buttons: { label: string; action: () => void }[] = [
+      { label: '💰 +1000 Gold', action: () => this.devCheat({ type: 'add_gold', amount: 1000 }) },
+      { label: '💰 +10000 Gold', action: () => this.devCheat({ type: 'add_gold', amount: 10000 }) },
+      { label: '⏭ Skip Prep', action: () => this.devCheat({ type: 'skip_prep' }) },
+      { label: '⏸ Pause Timer', action: () => {
+        this.prepTimerPaused = !this.prepTimerPaused;
+        this.devCheat({ type: 'pause_prep_timer', paused: this.prepTimerPaused });
+      }},
+      { label: '👾 Spawn 10 Grunts', action: () => this.devCheat({ type: 'spawn_enemies', enemyType: 'grunt', count: 10 }) },
+      { label: '👾 Spawn 5 Tanks', action: () => this.devCheat({ type: 'spawn_enemies', enemyType: 'tank', count: 5, hp: 500 }) },
+      { label: '👾 Spawn Boss', action: () => this.devCheat({ type: 'spawn_enemies', enemyType: 'boss', count: 1, hp: 2000 }) },
+      { label: '💀 Kill All Enemies', action: () => this.devCheat({ type: 'kill_all_enemies' }) },
+      { label: '❤ Full HP', action: () => this.devCheat({ type: 'set_base_hp', hp: 100 }) },
+      { label: '❤ Set HP = 1', action: () => this.devCheat({ type: 'set_base_hp', hp: 1 }) },
+      { label: '🛡 God Mode', action: () => {
+        this.godModeEnabled = !this.godModeEnabled;
+        this.devCheat({ type: 'god_mode', enabled: this.godModeEnabled });
+      }},
+      { label: '⚔ Force Combat', action: () => this.devCheat({ type: 'set_phase', phase: 'combat' }) },
+      { label: '🛡 Force Prep', action: () => this.devCheat({ type: 'set_phase', phase: 'prep' }) },
+    ];
+
+    const panelH = pad * 2 + 24 * S + buttons.length * (btnH + btnGap);
+    const panelY = H - panelH - 10 * S;
+
+    this.devPanel = this.add.container(panelX, panelY).setScrollFactor(0).setDepth(500);
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.85);
+    bg.fillRoundedRect(0, 0, panelW, panelH, 8 * S);
+    bg.lineStyle(S, 0xff8800, 0.8);
+    bg.strokeRoundedRect(0, 0, panelW, panelH, 8 * S);
+    this.devPanel.add(bg);
+
+    // Title
+    const title = this.add.text(panelW / 2, pad, 'DEV MODE', {
+      fontSize: `${14 * S}px`,
+      fontFamily: '"Arial Black", Arial',
+      color: '#ff8800',
+      stroke: '#000000',
+      strokeThickness: 2 * S,
+    }).setOrigin(0.5, 0);
+    this.devPanel.add(title);
+
+    // Buttons
+    let yOff = pad + 24 * S;
+    for (const btn of buttons) {
+      const btnContainer = this.createDevButton(pad, yOff, panelW - pad * 2, btnH, btn.label, btn.action);
+      this.devPanel.add(btnContainer);
+      yOff += btnH + btnGap;
+    }
+  }
+
+  private createDevButton(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    onClick: () => void,
+  ): Phaser.GameObjects.Container {
+    const container = this.add.container(x, y);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x333333, 0.9);
+    bg.fillRoundedRect(0, 0, w, h, 4 * S);
+
+    const text = this.add.text(w / 2, h / 2, label, {
+      fontSize: `${11 * S}px`,
+      fontFamily: 'Arial',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+
+    const hitArea = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+
+    hitArea.on('pointerover', () => {
+      bg.clear();
+      bg.fillStyle(0x555555, 0.9);
+      bg.fillRoundedRect(0, 0, w, h, 4 * S);
+    });
+
+    hitArea.on('pointerout', () => {
+      bg.clear();
+      bg.fillStyle(0x333333, 0.9);
+      bg.fillRoundedRect(0, 0, w, h, 4 * S);
+    });
+
+    hitArea.on('pointerdown', () => {
+      bg.clear();
+      bg.fillStyle(0x222222, 0.9);
+      bg.fillRoundedRect(0, 0, w, h, 4 * S);
+    });
+
+    hitArea.on('pointerup', () => {
+      bg.clear();
+      bg.fillStyle(0x555555, 0.9);
+      bg.fillRoundedRect(0, 0, w, h, 4 * S);
+      onClick();
+    });
+
+    container.add([bg, text, hitArea]);
+    return container;
+  }
+
+  private devCheat(cheat: DevCheatCommand): void {
+    const gameClient = this.registry.get('gameClient') as GameClient;
+    gameClient?.devCheat(cheat);
   }
 }

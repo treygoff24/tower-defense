@@ -38,4 +38,8 @@ export class EconomySystem {
   canAfford(amount: number): boolean {
     return this.state.gold >= amount;
   }
+
+  setGold(amount: number): void {
+    this.state.gold = Math.max(0, Math.floor(amount));
+  }
 }

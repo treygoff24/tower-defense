@@ -1,6 +1,6 @@
 // packages/client/src/networking/NetworkManager.ts
 import { io, Socket } from 'socket.io-client';
-import type { ClientCommand, GameState, ElementType } from '@td/shared';
+import type { ClientCommand, GameState, ElementType, DevCheatCommand } from '@td/shared';
 
 type SnapshotCallback = (state: GameState) => void;
 
@@ -75,6 +75,18 @@ export class NetworkManager {
 
   async startWave(): Promise<{ ok: boolean; reason?: string }> {
     return this.sendCommand({ type: 'start_wave' });
+  }
+
+  sendDevCheat(cheat: DevCheatCommand): Promise<{ ok: boolean }> {
+    return new Promise((resolve) => {
+      if (!this.socket?.connected) {
+        resolve({ ok: false });
+        return;
+      }
+      this.socket.emit('dev_cheat', cheat, (response: { ok: boolean }) => {
+        resolve(response);
+      });
+    });
   }
 
   disconnect(): void {

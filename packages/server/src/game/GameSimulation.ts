@@ -1,5 +1,5 @@
 // packages/server/src/game/GameSimulation.ts
-import type { GameState, ElementType, TowerConfig, WaveConfig, MapConfig, ReactionConfig } from '@td/shared';
+import type { GameState, ElementType, TowerConfig, WaveConfig, MapConfig, ReactionConfig, GamePhase, EnemyType } from '@td/shared';
 import { PREP_PHASE_DURATION_SEC, TOWER_CONFIGS, WAVE_CONFIGS, MAP_CONFIGS, REACTION_CONFIGS } from '@td/shared';
 import { GameRoom } from '../rooms/GameRoom.js';
 import { EconomySystem } from '../systems/EconomySystem.js';
@@ -25,6 +25,8 @@ export class GameSimulation {
   private reactionSystem: ReactionSystem;
   private spawnQueue: SpawnEvent[] = [];
   private waveElapsedSec = 0;
+  private _godMode = false;
+  private _prepTimerPaused = false;
 
   private constructor(
     room: GameRoom,
@@ -122,7 +124,9 @@ export class GameSimulation {
   tick(dt: number): void {
     const phase = this.room.state.phase;
     if (phase === 'prep') {
-      this.room.state.prepTimeRemaining -= dt;
+      if (!this._prepTimerPaused) {
+        this.room.state.prepTimeRemaining -= dt;
+      }
       if (this.room.state.prepTimeRemaining <= 0) {
         this.startWave();
       }
@@ -185,7 +189,9 @@ export class GameSimulation {
       console.log(`[DEBUG] ${leaked.length} enemies leaked! baseHp=${this.room.state.baseHp}, wave=${this.room.state.wave}, elapsed=${this.waveElapsedSec.toFixed(1)}s`);
     }
     for (const _enemy of leaked) {
-      this.room.state.baseHp -= 1;
+      if (!this._godMode) {
+        this.room.state.baseHp -= 1;
+      }
     }
 
     // Check defeat
@@ -215,6 +221,68 @@ export class GameSimulation {
   /** Dev/test only — grant gold directly */
   cheatAddGold(amount: number): void {
     this.economy.addGold(amount);
+  }
+
+  /** Dev: set gold to exact amount */
+  devSetGold(amount: number): void {
+    this.economy.setGold(amount);
+  }
+
+  /** Dev: skip prep timer — triggers startWave on next tick */
+  devSkipPrep(): void {
+    if (this.room.state.phase === 'prep') {
+      this.room.state.prepTimeRemaining = 0;
+    }
+  }
+
+  /** Dev: pause/unpause the prep timer */
+  devPausePrepTimer(paused: boolean): void {
+    this._prepTimerPaused = paused;
+  }
+
+  /** Dev: spawn N enemies immediately */
+  devSpawnEnemies(enemyType: EnemyType, count: number, hp?: number, speed?: number): void {
+    for (let i = 0; i < count; i++) {
+      this.enemySystem.spawnEnemy(
+        enemyType,
+        hp ?? 100,
+        speed ?? 60,
+        0,
+        [],
+      );
+    }
+  }
+
+  /** Dev: kill all alive enemies instantly */
+  devKillAllEnemies(): void {
+    const alive = this.enemySystem.getAliveEnemies();
+    for (const enemy of alive) {
+      this.enemySystem.damageEnemy(enemy.instanceId, enemy.hp);
+    }
+  }
+
+  /** Dev: force phase transition */
+  devSetPhase(phase: GamePhase): void {
+    this.room.state.phase = phase;
+    if (phase === 'prep') {
+      this.room.state.prepTimeRemaining = PREP_PHASE_DURATION_SEC;
+    }
+  }
+
+  /** Dev: set base HP */
+  devSetBaseHp(hp: number): void {
+    this.room.state.baseHp = hp;
+  }
+
+  /** Dev: set current wave number */
+  devSetWave(wave: number): void {
+    this.room.state.wave = wave;
+    this.waveScheduler.setCurrentWave(wave);
+  }
+
+  /** Dev: god mode — base takes no damage */
+  devGodMode(enabled: boolean): void {
+    this._godMode = enabled;
   }
 
   private elementToStatusType(element: ElementType): string {

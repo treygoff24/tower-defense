@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import { GameSimulation } from './game/GameSimulation.js';
 import { GameLoop } from './game/GameLoop.js';
 import { TICK_RATE } from '@td/shared';
-import type { ClientCommand } from '@td/shared';
+import type { ClientCommand, DevCheatCommand } from '@td/shared';
 
 const PORT = 3001;
 
@@ -44,9 +44,48 @@ io.on('connection', (socket) => {
   });
 
   // Dev-only: cheat commands for testing
-  socket.on('dev_cheat', (cheat: { type: string; amount?: number }, ack: (result: { ok: boolean }) => void) => {
-    if (cheat.type === 'add_gold') {
-      sim.cheatAddGold(cheat.amount ?? 10000);
+  socket.on('dev_cheat', (cheat: DevCheatCommand, ack: (result: { ok: boolean; reason?: string }) => void) => {
+    const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+    const reject = (reason: string) => { if (typeof ack === 'function') ack({ ok: false, reason }); };
+
+    switch (cheat.type) {
+      case 'add_gold':
+        if (!fin(cheat.amount)) return reject('invalid amount');
+        sim.cheatAddGold(cheat.amount);
+        break;
+      case 'set_gold':
+        if (!fin(cheat.amount)) return reject('invalid amount');
+        sim.devSetGold(cheat.amount);
+        break;
+      case 'skip_prep':
+        sim.devSkipPrep();
+        break;
+      case 'spawn_enemies':
+        if (!fin(cheat.count) || cheat.count < 1 || cheat.count > 100) return reject('invalid count');
+        sim.devSpawnEnemies(cheat.enemyType, cheat.count, cheat.hp, cheat.speed);
+        break;
+      case 'kill_all_enemies':
+        sim.devKillAllEnemies();
+        break;
+      case 'set_phase':
+        sim.devSetPhase(cheat.phase);
+        break;
+      case 'set_base_hp':
+        if (!fin(cheat.hp) || cheat.hp < 0) return reject('invalid hp');
+        sim.devSetBaseHp(cheat.hp);
+        break;
+      case 'set_wave':
+        if (!fin(cheat.wave) || cheat.wave < 0) return reject('invalid wave');
+        sim.devSetWave(cheat.wave);
+        break;
+      case 'god_mode':
+        sim.devGodMode(cheat.enabled);
+        break;
+      case 'pause_prep_timer':
+        sim.devPausePrepTimer(cheat.paused);
+        break;
+      default:
+        return reject('unknown dev cheat type');
     }
     if (typeof ack === 'function') ack({ ok: true });
   });
