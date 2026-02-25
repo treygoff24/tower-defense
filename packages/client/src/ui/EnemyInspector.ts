@@ -288,17 +288,17 @@ export class EnemyInspector {
     const gfx = this.scene.add.graphics();
     const draw = (hover: boolean) => {
       gfx.clear();
-      gfx.fillStyle(hover ? 0x553333 : 0x332222, 1);
-      gfx.fillCircle(0, 0, 9);
-      gfx.lineStyle(1, 0xaa6666, 0.9);
-      gfx.strokeCircle(0, 0, 9);
+      gfx.fillStyle(hover ? 0xcc3333 : 0x993333, 1);
+      gfx.fillCircle(0, 0, 12);
+      gfx.lineStyle(1, 0xff6666, 0.9);
+      gfx.strokeCircle(0, 0, 12);
     };
     draw(false);
     const label = this.scene.add
-      .text(0, 0, '✕', { fontSize: '10px', color: '#ccaaaa' })
+      .text(0, 0, '✕', { fontSize: '14px', fontStyle: 'bold', color: '#ffffff' })
       .setOrigin(0.5, 0.5);
     const hit = this.scene.add
-      .rectangle(0, 0, 18, 18, 0, 0)
+      .rectangle(0, 0, 28, 28, 0, 0)
       .setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => draw(true));
     hit.on('pointerout', () => draw(false));
