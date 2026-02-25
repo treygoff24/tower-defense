@@ -734,13 +734,10 @@ export class HudScene extends Phaser.Scene {
     previewContainer.add(backdrop);
 
     const panelW = Math.min(760, W - 64);
-    const maxRows = 9;
     const rowH = 24;
-    const startWave = Math.max(this.currentWaveNum, 1);
     const upcomingWaves = WAVE_CONFIGS
-      .filter((waveCfg) => waveCfg.wave >= startWave)
-      .slice(0, maxRows);
-    const panelH = Math.max(140, 64 + upcomingWaves.length * rowH);
+      .filter((waveCfg) => waveCfg.wave >= 1);
+    const panelH = 64 + 20 * rowH;
     const panelX = -panelW / 2;
     const panelY = -panelH / 2;
 
