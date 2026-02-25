@@ -1058,13 +1058,19 @@ export class GameScene extends Phaser.Scene {
     const current = new Set(Object.keys(enemies));
 
     for (const [id, ev] of this.enemies) {
-      if (!current.has(id) || !enemies[id].alive) {
+      if (!current.has(id)) {
         this.killEnemy(id, ev);
       }
     }
 
     for (const [id, enemy] of Object.entries(enemies)) {
-      if (!enemy.alive) continue;
+      if (!enemy.alive) {
+        const ev = this.enemies.get(id);
+        if (ev && ev.sprite.active) {
+          this.killEnemy(id, ev);
+        }
+        continue;
+      }
 
       if (!this.enemies.has(id)) {
         const ev = this.createEnemyVisual(id, enemy);
@@ -1309,6 +1315,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private killEnemy(id: string, ev: EnemyVisual): void {
+    if (!this.enemies.has(id)) return;
+
     const { sprite, hpBar, shadow } = ev;
     const x = sprite.x;
     const y = sprite.y;
