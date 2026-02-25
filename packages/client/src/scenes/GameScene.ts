@@ -893,7 +893,7 @@ export class GameScene extends Phaser.Scene {
       } else {
         const tv = this.towers.get(id)!;
         tv.base.setPosition(px, py);
-        tv.soldier.setPosition(px, py - 8);
+        tv.soldier.setPosition(px, py - 22);
         tv.aura.setPosition(px, py + 4);
         tv.ownerRing?.setPosition(px, py + 6);
         // Update tier indicator if tower was upgraded
@@ -944,7 +944,7 @@ export class GameScene extends Phaser.Scene {
     base.setInteractive({ useHandCursor: true });
 
     // Soldier sprite (animated, sits on top of building)
-    const soldier = this.add.sprite(px, py - 8, soldierKey);
+    const soldier = this.add.sprite(px, py - 22, soldierKey);
     soldier.setScale(assetInfo.unitScale);
     soldier.setDepth(ENTITY_DEPTH + py * 0.001 + 0.5);
     soldier.play(`${assetInfo.idleKey}_idle`);
@@ -1028,7 +1028,7 @@ export class GameScene extends Phaser.Scene {
       targets: [tv.soldier, tv.base],
       y: (target: Phaser.GameObjects.GameObject) => {
         const go = target as Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
-        return go === tv.soldier ? py - 8 : py;
+        return go === tv.soldier ? py - 22 : py;
       },
       alpha: 1,
       scaleX: (target: Phaser.GameObjects.GameObject) => {
