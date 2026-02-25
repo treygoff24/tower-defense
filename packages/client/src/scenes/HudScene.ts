@@ -1184,7 +1184,6 @@ export class HudScene extends Phaser.Scene {
 
     // ── Phase-specific polish ──────────────────────────────────
     if (phase === 'combat') {
-      this.showCombatVignette();
       // Fade out announcement after delay
       this.tweens.add({
         targets: this.phaseText,
