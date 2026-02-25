@@ -88,7 +88,9 @@ export class GameClient {
       const configId = data.configId ?? this.selectedTowerId;
       if (configId) {
         const result = await this.network.placeTower(configId, data.tileX, data.tileY);
-        if (!result.ok) {
+        if (result.ok) {
+          gameScene.events.emit('tower-deselected');
+        } else {
           console.warn('Placement rejected:', result.reason);
         }
       }
