@@ -816,21 +816,6 @@ export class GameScene extends Phaser.Scene {
         ease: 'Back.Out',
       });
     }
-    // Flash the screen red briefly
-    const flash = this.add.rectangle(
-      this.cameras.main.scrollX + this.cameras.main.width / 2,
-      this.cameras.main.scrollY + this.cameras.main.height / 2,
-      this.cameras.main.width,
-      this.cameras.main.height,
-      0xff0000,
-      0.2
-    ).setDepth(200);
-    this.tweens.add({
-      targets: flash,
-      alpha: 0,
-      duration: 600,
-      onComplete: () => flash.destroy(),
-    });
   }
 
   private playWaveClearEffect(): void {
