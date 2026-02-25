@@ -421,28 +421,6 @@ export class GameScene extends Phaser.Scene {
     g.lineStyle(2, 0x6b4c1e, 0.25);
     this.drawPath(g, waypoints);
 
-    // ── Build zone styling ───────────────────────────────────────
-    for (const zone of buildZones) {
-      const zx = zone.x * TILE_SIZE;
-      const zy = zone.y * TILE_SIZE;
-      const zw = zone.width * TILE_SIZE;
-      const zh = zone.height * TILE_SIZE;
-
-      // Stone platform
-      g.fillStyle(0x8b7d6b, 0.45);
-      g.fillRoundedRect(zx + 2, zy + 2, zw - 4, zh - 4, 6);
-      // Outer border — warm stone
-      g.lineStyle(2, 0xccbb99, 0.65);
-      g.strokeRoundedRect(zx + 2, zy + 2, zw - 4, zh - 4, 6);
-      // Inner grid lines for individual tiles
-      g.lineStyle(1, 0xaabb88, 0.3);
-      for (let tx = zone.x; tx < zone.x + zone.width; tx++) {
-        for (let ty = zone.y; ty < zone.y + zone.height; ty++) {
-          g.strokeRect(tx * TILE_SIZE + 4, ty * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-        }
-      }
-    }
-
     // ── Start marker — enemy spawn (Castle Red) ──────────────────
     if (waypoints.length > 0) {
       const sp = waypoints[0];
