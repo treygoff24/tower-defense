@@ -99,6 +99,7 @@ export class EnemyInspector {
   dismiss(): void {
     if (this.dismissed) return;
     this.dismissed = true;
+    this.destroy();
     this.dismissCallback();
   }
 
